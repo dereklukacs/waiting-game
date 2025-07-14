@@ -39,3 +39,13 @@ I think that we need a game over and restart mechanic when the last cube gets el
 after restarting the barriers were REALLY far away. I think we need to do a full reset
 
 after restarting now the barriers are correct but the first cube is not reset
+
+can you have the center pillars of the gates be split in half? currently they are interfering and only one of the colors is rendering
+
+let's make the cubes 30% smaller
+
+the gates are not coming at consistent spacing, also the first spawn shows too many gates at once, we should generate them all programmatically
+
+make the movement speed 20% faster
+
+can you create a config.ts file centralizes all of the configurable variables and any rng values

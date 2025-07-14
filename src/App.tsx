@@ -1,6 +1,7 @@
 import { observer } from "mobx-react-lite";
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
+import { CONFIG } from "./config";
 
 const App = observer(() => {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -15,7 +16,7 @@ const App = observer(() => {
 
     // Scene setup
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const camera = new THREE.PerspectiveCamera(CONFIG.CAMERA_FOV, window.innerWidth / window.innerHeight, CONFIG.CAMERA_NEAR, CONFIG.CAMERA_FAR);
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -23,13 +24,13 @@ const App = observer(() => {
 
     // Create starfield background
     const starsGeometry = new THREE.BufferGeometry();
-    const starsMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 2 });
+    const starsMaterial = new THREE.PointsMaterial({ color: CONFIG.COLORS.STARS, size: CONFIG.STAR_SIZE });
     
     const starsVertices = [];
-    for (let i = 0; i < 1000; i++) {
-      const x = (Math.random() - 0.5) * 2000;
-      const y = (Math.random() - 0.5) * 2000;
-      const z = (Math.random() - 0.5) * 2000;
+    for (let i = 0; i < CONFIG.STAR_COUNT; i++) {
+      const x = CONFIG.RNG.starPosition();
+      const y = CONFIG.RNG.starPosition();
+      const z = CONFIG.RNG.starPosition();
       starsVertices.push(x, y, z);
     }
     
@@ -37,23 +38,23 @@ const App = observer(() => {
     const stars = new THREE.Points(starsGeometry, starsMaterial);
     scene.add(stars);
     
-    renderer.setClearColor(0x000428);
+    renderer.setClearColor(CONFIG.COLORS.BACKGROUND);
 
     // Create road
-    const roadGeometry = new THREE.PlaneGeometry(6, 2000);
+    const roadGeometry = new THREE.PlaneGeometry(CONFIG.ROAD_WIDTH, CONFIG.ROAD_LENGTH);
     const roadMaterial = new THREE.MeshBasicMaterial({ 
-      color: 0x333333 
+      color: CONFIG.COLORS.ROAD 
     });
     const road = new THREE.Mesh(roadGeometry, roadMaterial);
     road.rotation.x = -Math.PI / 2; // Rotate to be horizontal
-    road.position.y = -2;
-    road.position.z = -500; // Center the road extending forward
+    road.position.y = CONFIG.ROAD_POSITION_Y;
+    road.position.z = CONFIG.ROAD_POSITION_Z; // Center the road extending forward
     scene.add(road);
 
     // Create road lines
-    const lineGeometry = new THREE.PlaneGeometry(0.2, 2000);
+    const lineGeometry = new THREE.PlaneGeometry(CONFIG.ROAD_LINE_WIDTH, CONFIG.ROAD_LENGTH);
     const lineMaterial = new THREE.MeshBasicMaterial({ 
-      color: 0xffffff 
+      color: CONFIG.COLORS.ROAD_LINES 
     });
     
     // Center line
@@ -79,16 +80,16 @@ const App = observer(() => {
     scene.add(rightLine);
 
     // Create a cube (player)
-    const geometry = new THREE.BoxGeometry(1, 1, 1);
+    const geometry = new THREE.BoxGeometry(CONFIG.CUBE_SIZE, CONFIG.CUBE_SIZE, CONFIG.CUBE_SIZE);
     const material = new THREE.MeshBasicMaterial({ 
-      color: 0x00ff00,
+      color: CONFIG.COLORS.CUBE,
       wireframe: false 
     });
     const cube = new THREE.Mesh(geometry, material);
     
     // Add edges to the cube
     const edges = new THREE.EdgesGeometry(geometry);
-    const edgeMaterial = new THREE.LineBasicMaterial({ color: 0x000000 });
+    const edgeMaterial = new THREE.LineBasicMaterial({ color: CONFIG.COLORS.CUBE_EDGES });
     const wireframe = new THREE.LineSegments(edges, edgeMaterial);
     cube.add(wireframe);
     
@@ -97,8 +98,8 @@ const App = observer(() => {
 
     // Dynamic gate generation
     const gates: THREE.Group[] = [];
-    let nextGateZ = -20; // Start spawning gates ahead
-    const gateSpacing = 15;
+    let nextGateZ = CONFIG.INITIAL_GATE_Z;
+    const gateSpacing = CONFIG.GATE_SPACING;
     
     // Mob system with velocity tracking
     const cubes: THREE.Mesh[] = [cube]; // Start with the main cube
@@ -111,24 +112,24 @@ const App = observer(() => {
     // Magnetic point controls (invisible point that all cubes are attracted to)
     const magnetPoint = new THREE.Vector3(0, -1, 0); // Starting position
     let targetX = 0;
-    const maxSpeed = 0.15;
-    const roadBounds = 2.5; // Half road width minus cube size
+    const maxSpeed = CONFIG.MAGNETIC_POINT_MAX_SPEED;
+    const roadBounds = CONFIG.ROAD_BOUNDS;
     let isDragging = false;
     let lastMouseX = 0;
     
     const createGatePair = (zPosition: number) => {
       // Randomly assign which side gets positive/negative
-      const leftIsPositive = Math.random() > 0.5;
+      const leftIsPositive = CONFIG.RNG.isLeftGatePositive();
       
       // Create left gate
       const leftGate = new THREE.Group();
-      const leftColor = leftIsPositive ? 0x4444ff : 0xff4444;
+      const leftColor = leftIsPositive ? CONFIG.COLORS.POSITIVE_GATE : CONFIG.COLORS.NEGATIVE_GATE;
       
       const leftPostGeometry = new THREE.BoxGeometry(0.3, 3, 0.3);
       const leftPostMaterial = new THREE.MeshBasicMaterial({ color: leftColor });
       
       const leftInnerPost = new THREE.Mesh(leftPostGeometry, leftPostMaterial);
-      leftInnerPost.position.set(0, 0.5, 0);
+      leftInnerPost.position.set(-0.2, 0.5, 0); // Move left post to the left side
       leftGate.add(leftInnerPost);
       
       const leftOuterPost = new THREE.Mesh(leftPostGeometry, leftPostMaterial);
@@ -155,13 +156,13 @@ const App = observer(() => {
       
       // Create right gate
       const rightGate = new THREE.Group();
-      const rightColor = !leftIsPositive ? 0x4444ff : 0xff4444;
+      const rightColor = !leftIsPositive ? CONFIG.COLORS.POSITIVE_GATE : CONFIG.COLORS.NEGATIVE_GATE;
       
       const rightPostGeometry = new THREE.BoxGeometry(0.3, 3, 0.3);
       const rightPostMaterial = new THREE.MeshBasicMaterial({ color: rightColor });
       
       const rightInnerPost = new THREE.Mesh(rightPostGeometry, rightPostMaterial);
-      rightInnerPost.position.set(0, 0.5, 0);
+      rightInnerPost.position.set(0.2, 0.5, 0); // Move right post to the right side
       rightGate.add(rightInnerPost);
       
       const rightOuterPost = new THREE.Mesh(rightPostGeometry, rightPostMaterial);
@@ -192,13 +193,7 @@ const App = observer(() => {
       gates.push(rightGate);
     };
     
-    // Create initial gate pairs
-    for (let i = 0; i < 8; i++) {
-      createGatePair(nextGateZ - (i * gateSpacing));
-    }
-    
-    // Set nextGateZ beyond the initial gates to prevent overlap
-    nextGateZ = nextGateZ - (8 * gateSpacing) - gateSpacing;
+    // No initial gates - all gates will be generated programmatically
 
     // Position camera for perspective view
     camera.position.set(0, 3, 8);
@@ -239,22 +234,22 @@ const App = observer(() => {
       if (!gameRunning) return; // Stop animation if game over
       animationId = requestAnimationFrame(animate);
       
-      // Move camera forward along the road
-      camera.position.z -= 0.1;
+      // Move camera forward along the road (20% faster)
+      camera.position.z -= 0.12;
       camera.lookAt(0, 0, camera.position.z - 18);
       
       // Update magnetic point position
-      magnetPoint.z -= 0.1; // Move forward with camera
+      magnetPoint.z -= 0.12; // Move forward with camera
       
       // Smooth magnetic point movement based on mouse input
       const deltaX = targetX - magnetPoint.x;
       const moveStep = Math.sign(deltaX) * Math.min(Math.abs(deltaX), maxSpeed);
       magnetPoint.x += moveStep;
       
-      // Generate new gate pairs ahead
-      if (camera.position.z < nextGateZ + 50) {
+      // Generate new gate pairs ahead with consistent spacing
+      if (camera.position.z < nextGateZ + 30) {
         createGatePair(nextGateZ);
-        nextGateZ -= gateSpacing;
+        nextGateZ -= gateSpacing; // Move to next gate position
       }
       
       // Check gate collisions with individual cubes
@@ -346,8 +341,8 @@ const App = observer(() => {
         mobCube.rotation.y += 0.02;
         mobCube.rotation.x += 0.01;
         
-        // Move forward with camera
-        mobCube.position.z -= 0.1;
+        // Move forward with camera (20% faster)
+        mobCube.position.z -= 0.12;
         
         // Get this cube's velocity
         const velocity = cubeVelocities[index];
@@ -488,15 +483,7 @@ const App = observer(() => {
       currentMobCount = 1;
       
       // Reset gate generation system
-      nextGateZ = -20;
-      
-      // Create new initial gate pairs
-      for (let i = 0; i < 8; i++) {
-        createGatePair(nextGateZ - (i * gateSpacing));
-      }
-      
-      // Set nextGateZ beyond the initial gates to prevent overlap
-      nextGateZ = nextGateZ - (8 * gateSpacing) - gateSpacing;
+      nextGateZ = -30;
       
       // Clear triggered pairs
       triggeredPairs.clear();
