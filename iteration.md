@@ -49,3 +49,7 @@ the gates are not coming at consistent spacing, also the first spawn shows too m
 make the movement speed 20% faster
 
 can you create a config.ts file centralizes all of the configurable variables and any rng values
+
+can you replace each of the cubes with a stick person? how can I get 3d assets for that? Ideally their legs would move to simulate running
+
+Can you reduce hitbox size for the stick person? they are getting too spread out

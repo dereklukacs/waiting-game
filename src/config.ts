@@ -5,21 +5,28 @@ export const CONFIG = {
   MAGNETIC_POINT_MAX_SPEED: 0.18,
   ROAD_BOUNDS: 2.5,
 
-  // Cube Properties
-  CUBE_SIZE: 0.7, // 30% smaller than original 1.0
+  // Character Properties
+  CUBE_SIZE: 0.4, // Smaller hitbox for stick people to reduce spreading
   CUBE_ROTATION_Y: 0.02,
   CUBE_ROTATION_X: 0.01,
 
+  // Stick Person Properties
+  STICK_PERSON_SCALE: 1.0,
+  STICK_PERSON_ANIMATION_SPEED: 8,
+  STICK_PERSON_LEG_SWING: 0.3,
+  STICK_PERSON_ARM_SWING: 0.2,
+  STICK_PERSON_BOB_HEIGHT: 0.05,
+
   // Physics
-  ATTRACTION_STRENGTH: 0.008,
-  ATTRACTION_MIN_DISTANCE: 0.5,
-  HARD_REPULSION_STRENGTH: 0.15,
-  HARD_REPULSION_MIN_DISTANCE: 0.8,
-  SOFT_REPULSION_STRENGTH: 0.02,
-  SOFT_REPULSION_COMFORT_DISTANCE: 1.4,
+  ATTRACTION_STRENGTH: 0.08, // Extremely strong attraction
+  ATTRACTION_MIN_DISTANCE: 0.05, // Almost no dead zone
+  HARD_REPULSION_STRENGTH: 0.01, // Extremely weak hard repulsion
+  HARD_REPULSION_MIN_DISTANCE: 0.1, // Extremely tiny hard repulsion zone
+  SOFT_REPULSION_STRENGTH: 0.001, // Practically no soft repulsion
+  SOFT_REPULSION_COMFORT_DISTANCE: 0.15, // Extremely tiny comfort distance
   VELOCITY_DAMPING: 0.85,
   MAX_VELOCITY: 0.1,
-  COLLISION_MIN_SEPARATION: 0.6,
+  COLLISION_MIN_SEPARATION: 0.05, // Practically overlapping
 
   // Gate System
   GATE_SPACING: 10,

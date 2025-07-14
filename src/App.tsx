@@ -2,6 +2,7 @@ import { observer } from "mobx-react-lite";
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { CONFIG } from "./config";
+import { StickPerson } from "./StickPerson";
 
 const App = observer(() => {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -79,21 +80,20 @@ const App = observer(() => {
     rightLine.position.z = -500;
     scene.add(rightLine);
 
-    // Create a cube (player)
+    // Create first stick person (player)
+    const firstStickPerson = new StickPerson();
+    firstStickPerson.setPosition(0, -1, 0);
+    scene.add(firstStickPerson.group);
+    
+    // Keep geometry and material for collision detection (invisible)
     const geometry = new THREE.BoxGeometry(CONFIG.CUBE_SIZE, CONFIG.CUBE_SIZE, CONFIG.CUBE_SIZE);
     const material = new THREE.MeshBasicMaterial({ 
       color: CONFIG.COLORS.CUBE,
       wireframe: false 
     });
     const cube = new THREE.Mesh(geometry, material);
-    
-    // Add edges to the cube
-    const edges = new THREE.EdgesGeometry(geometry);
-    const edgeMaterial = new THREE.LineBasicMaterial({ color: CONFIG.COLORS.CUBE_EDGES });
-    const wireframe = new THREE.LineSegments(edges, edgeMaterial);
-    cube.add(wireframe);
-    
     cube.position.y = -1;
+    cube.visible = false; // Hide the collision box
     scene.add(cube);
 
     // Dynamic gate generation
@@ -102,7 +102,8 @@ const App = observer(() => {
     const gateSpacing = CONFIG.GATE_SPACING;
     
     // Mob system with velocity tracking
-    const cubes: THREE.Mesh[] = [cube]; // Start with the main cube
+    const cubes: THREE.Mesh[] = [cube]; // Start with the main cube (collision box)
+    const stickPeople: StickPerson[] = [firstStickPerson]; // Visual stick people
     const cubeVelocities: THREE.Vector3[] = [new THREE.Vector3(0, 0, 0)]; // Velocity for each cube
     let currentMobCount = 1;
     
@@ -234,12 +235,12 @@ const App = observer(() => {
       if (!gameRunning) return; // Stop animation if game over
       animationId = requestAnimationFrame(animate);
       
-      // Move camera forward along the road (20% faster)
-      camera.position.z -= 0.12;
-      camera.lookAt(0, 0, camera.position.z - 18);
+      // Move camera forward along the road
+      camera.position.z -= CONFIG.CAMERA_SPEED;
+      camera.lookAt(0, 0, camera.position.z - CONFIG.CAMERA_LOOK_AHEAD_DISTANCE);
       
       // Update magnetic point position
-      magnetPoint.z -= 0.12; // Move forward with camera
+      magnetPoint.z -= CONFIG.CAMERA_SPEED; // Move forward with camera
       
       // Smooth magnetic point movement based on mouse input
       const deltaX = targetX - magnetPoint.x;
@@ -281,33 +282,48 @@ const App = observer(() => {
               
               if (gateAny.isPositive) {
                 // Blue gate: 30% chance to duplicate this cube
-                if (Math.random() < 0.3) {
+                if (CONFIG.RNG.shouldDuplicate()) {
                   currentMobCount++;
+                  
+                  // Create new collision box (invisible)
                   const newCube = new THREE.Mesh(geometry, material.clone());
-                  
-                  // Add edges to the new cube
-                  const newEdges = new THREE.EdgesGeometry(geometry);
-                  const newLineMaterial = new THREE.LineBasicMaterial({ color: 0x000000 });
-                  const newWireframe = new THREE.LineSegments(newEdges, newLineMaterial);
-                  newCube.add(newWireframe);
-                  
-                  // Spawn near the triggering cube
+                  newCube.visible = false;
                   newCube.position.set(
-                    testCube.position.x + (Math.random() - 0.5) * 1.5,
+                    testCube.position.x + CONFIG.RNG.cubeSpawnOffsetX(),
                     testCube.position.y,
-                    testCube.position.z + (Math.random() - 0.5) * 1.5
+                    testCube.position.z + CONFIG.RNG.cubeSpawnOffsetZ()
                   );
                   scene.add(newCube);
                   cubes.push(newCube);
                   cubeVelocities.push(new THREE.Vector3(0, 0, 0));
+                  
+                  // Create new stick person (visible)
+                  const newStickPerson = new StickPerson();
+                  newStickPerson.setPosition(
+                    newCube.position.x,
+                    newCube.position.y,
+                    newCube.position.z
+                  );
+                  scene.add(newStickPerson.group);
+                  stickPeople.push(newStickPerson);
+                  
                   setMobCount(currentMobCount);
                 }
               } else {
-                // Red gate: delete this cube
+                // Red gate: delete this cube and stick person
                 currentMobCount--;
                 scene.remove(testCube);
                 testCube.geometry.dispose();
                 (testCube.material as THREE.Material).dispose();
+                
+                // Remove corresponding stick person
+                const stickPerson = stickPeople[cubeIndex];
+                if (stickPerson) {
+                  scene.remove(stickPerson.group);
+                  stickPerson.dispose();
+                  stickPeople.splice(cubeIndex, 1);
+                }
+                
                 cubes.splice(cubeIndex, 1);
                 cubeVelocities.splice(cubeIndex, 1);
                 setMobCount(currentMobCount);
@@ -337,12 +353,14 @@ const App = observer(() => {
       
       // Update ALL cubes with proper velocity-based physics
       cubes.forEach((mobCube, index) => {
-        // All cubes spin the same way
-        mobCube.rotation.y += 0.02;
-        mobCube.rotation.x += 0.01;
+        // Update corresponding stick person animation
+        const stickPerson = stickPeople[index];
+        if (stickPerson) {
+          stickPerson.animate(0.016); // Assuming ~60fps
+        }
         
-        // Move forward with camera (20% faster)
-        mobCube.position.z -= 0.12;
+        // Move forward with camera
+        mobCube.position.z -= CONFIG.CAMERA_SPEED;
         
         // Get this cube's velocity
         const velocity = cubeVelocities[index];
@@ -351,13 +369,13 @@ const App = observer(() => {
         let forceX = 0;
         let forceZ = 0;
         
-        // Attraction to magnetic point (very gentle)
-        const attractionStrength = 0.008;
+        // Attraction to magnetic point
+        const attractionStrength = CONFIG.ATTRACTION_STRENGTH;
         const dx = magnetPoint.x - mobCube.position.x;
         const dz = magnetPoint.z - mobCube.position.z;
         const distanceToMagnet = Math.sqrt(dx * dx + dz * dz);
         
-        if (distanceToMagnet > 0.5) { // Only attract if far from magnet
+        if (distanceToMagnet > CONFIG.ATTRACTION_MIN_DISTANCE) {
           forceX += dx * attractionStrength;
           forceZ += dz * attractionStrength;
         }
@@ -370,18 +388,18 @@ const App = observer(() => {
             const distance = Math.sqrt(deltaX * deltaX + deltaZ * deltaZ);
             
             // Hard collision prevention (very close)
-            const minDistance = 0.8;
+            const minDistance = CONFIG.HARD_REPULSION_MIN_DISTANCE;
             if (distance < minDistance && distance > 0.1) {
-              const hardRepulsion = 0.15;
+              const hardRepulsion = CONFIG.HARD_REPULSION_STRENGTH;
               const repulsionForce = hardRepulsion * (minDistance - distance) / minDistance;
               forceX += (deltaX / distance) * repulsionForce;
               forceZ += (deltaZ / distance) * repulsionForce;
             }
             
             // Soft spacing (comfortable distance)
-            const comfortDistance = 1.4;
+            const comfortDistance = CONFIG.SOFT_REPULSION_COMFORT_DISTANCE;
             if (distance < comfortDistance && distance > minDistance) {
-              const softRepulsion = 0.02;
+              const softRepulsion = CONFIG.SOFT_REPULSION_STRENGTH;
               const repulsionForce = softRepulsion * (comfortDistance - distance) / comfortDistance;
               forceX += (deltaX / distance) * repulsionForce;
               forceZ += (deltaZ / distance) * repulsionForce;
@@ -394,12 +412,12 @@ const App = observer(() => {
         velocity.z += forceZ;
         
         // Apply damping to prevent oscillations
-        const damping = 0.85;
+        const damping = CONFIG.VELOCITY_DAMPING;
         velocity.x *= damping;
         velocity.z *= damping;
         
         // Limit velocity to prevent crazy speeds
-        const maxSpeed = 0.1;
+        const maxSpeed = CONFIG.MAX_VELOCITY;
         const currentSpeed = Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
         if (currentSpeed > maxSpeed) {
           velocity.x = (velocity.x / currentSpeed) * maxSpeed;
@@ -410,13 +428,18 @@ const App = observer(() => {
         mobCube.position.x += velocity.x;
         mobCube.position.z += velocity.z;
         
+        // Sync stick person position with collision box
+        if (stickPerson) {
+          stickPerson.setPosition(mobCube.position.x, mobCube.position.y, mobCube.position.z);
+        }
+        
         // Final collision correction - push apart any overlapping cubes
         cubes.forEach((otherCube, otherIndex) => {
           if (otherCube !== mobCube && otherIndex !== index) {
             const deltaX = mobCube.position.x - otherCube.position.x;
             const deltaZ = mobCube.position.z - otherCube.position.z;
             const distance = Math.sqrt(deltaX * deltaX + deltaZ * deltaZ);
-            const minSeparation = 0.6; // Minimum allowed distance
+            const minSeparation = CONFIG.COLLISION_MIN_SEPARATION; // Minimum allowed distance
             
             if (distance < minSeparation && distance > 0.01) {
               const correction = (minSeparation - distance) * 0.5; // Split the correction
@@ -450,30 +473,37 @@ const App = observer(() => {
       });
       gates.length = 0;
       
-      // Clear all cubes
+      // Clear all cubes and stick people
       while (cubes.length > 0) {
         const removedCube = cubes.pop();
+        const removedStickPerson = stickPeople.pop();
         cubeVelocities.pop();
+        
         if (removedCube) {
           scene.remove(removedCube);
           removedCube.geometry.dispose();
           (removedCube.material as THREE.Material).dispose();
         }
+        
+        if (removedStickPerson) {
+          scene.remove(removedStickPerson.group);
+          removedStickPerson.dispose();
+        }
       }
       
-      // Recreate the first cube
+      // Recreate the first cube (invisible collision box)
       const newCube = new THREE.Mesh(geometry, material);
-      
-      // Add edges to the cube
-      const edges = new THREE.EdgesGeometry(geometry);
-      const edgeMaterial = new THREE.LineBasicMaterial({ color: 0x000000 });
-      const wireframe = new THREE.LineSegments(edges, edgeMaterial);
-      newCube.add(wireframe);
-      
+      newCube.visible = false;
       newCube.position.set(0, -1, 0);
       scene.add(newCube);
       cubes.push(newCube);
       cubeVelocities.push(new THREE.Vector3(0, 0, 0));
+      
+      // Recreate the first stick person
+      const newStickPerson = new StickPerson();
+      newStickPerson.setPosition(0, -1, 0);
+      scene.add(newStickPerson.group);
+      stickPeople.push(newStickPerson);
       
       // Reset camera and magnetic point to starting positions
       camera.position.set(0, 3, 8);
