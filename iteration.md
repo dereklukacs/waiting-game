@@ -55,3 +55,7 @@ can you replace each of the cubes with a stick person? how can I get 3d assets f
 Can you reduce hitbox size for the stick person? they are getting too spread out
 
 Can we add zombies coming towards the stick people. If one of the stick people touches a zombie that stick person is removed
+
+improve the look of the stick figure, ideally we should have 3d structures and proper shadows and illumination so we can better differentiate the characters
+
+the scene is too dark, the road and figures are not vibrant enough

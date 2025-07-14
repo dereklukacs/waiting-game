@@ -22,7 +22,31 @@ const App = observer(() => {
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     
     renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     mountRef.current.appendChild(renderer.domElement);
+
+    // Add brighter lighting for better visibility and vibrancy
+    const ambientLight = new THREE.AmbientLight(0x808080, 0.6); // Much brighter ambient light
+    scene.add(ambientLight);
+
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2); // Brighter directional light
+    directionalLight.position.set(-50, 50, 50);
+    directionalLight.castShadow = true;
+    directionalLight.shadow.mapSize.width = 2048;
+    directionalLight.shadow.mapSize.height = 2048;
+    directionalLight.shadow.camera.near = 0.1;
+    directionalLight.shadow.camera.far = 200;
+    directionalLight.shadow.camera.left = -50;
+    directionalLight.shadow.camera.right = 50;
+    directionalLight.shadow.camera.top = 50;
+    directionalLight.shadow.camera.bottom = -50;
+    scene.add(directionalLight);
+
+    // Add additional fill light for more vibrant scene
+    const fillLight = new THREE.DirectionalLight(0xffffff, 0.4);
+    fillLight.position.set(50, 30, -50); // From opposite side
+    scene.add(fillLight);
 
     // Create starfield background
     const starsGeometry = new THREE.BufferGeometry();
@@ -42,15 +66,16 @@ const App = observer(() => {
     
     renderer.setClearColor(CONFIG.COLORS.BACKGROUND);
 
-    // Create road
+    // Create road with shadow receiving
     const roadGeometry = new THREE.PlaneGeometry(CONFIG.ROAD_WIDTH, CONFIG.ROAD_LENGTH);
-    const roadMaterial = new THREE.MeshBasicMaterial({ 
+    const roadMaterial = new THREE.MeshLambertMaterial({ 
       color: CONFIG.COLORS.ROAD 
     });
     const road = new THREE.Mesh(roadGeometry, roadMaterial);
     road.rotation.x = -Math.PI / 2; // Rotate to be horizontal
     road.position.y = CONFIG.ROAD_POSITION_Y;
     road.position.z = CONFIG.ROAD_POSITION_Z; // Center the road extending forward
+    road.receiveShadow = true;
     scene.add(road);
 
     // Create road lines

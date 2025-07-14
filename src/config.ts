@@ -79,17 +79,17 @@ export const CONFIG = {
   STAR_SIZE: 2,
   STAR_SPREAD: 2000,
 
-  // Colors
+  // Colors - Updated for better vibrancy
   COLORS: {
-    POSITIVE_GATE: 0x4444ff, // Blue
-    NEGATIVE_GATE: 0xff4444, // Red
+    POSITIVE_GATE: 0x5555ff, // Brighter blue
+    NEGATIVE_GATE: 0xff5555, // Brighter red
     CUBE: 0x00ff00, // Green
     CUBE_EDGES: 0x000000, // Black
-    ROAD: 0x333333, // Dark gray
+    ROAD: 0x555555, // Lighter gray for better visibility
     ROAD_LINES: 0xffffff, // White
     STARS: 0xffffff, // White
-    BACKGROUND: 0x000428, // Dark blue
-    ZOMBIE: 0x8b0000, // Dark red
+    BACKGROUND: 0x001155, // Lighter dark blue background
+    ZOMBIE: 0xcc0000, // Brighter dark red
   },
 
   // Mouse Controls

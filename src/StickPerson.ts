@@ -8,47 +8,83 @@ export class StickPerson {
   public leftArm: THREE.Mesh;
   public rightArm: THREE.Mesh;
   private animationTime: number = 0;
+  private variation: number;
 
   constructor() {
     this.group = new THREE.Group();
+    this.variation = Math.random(); // For color/size variation
     
-    // Materials
-    const bodyMaterial = new THREE.MeshBasicMaterial({ color: CONFIG.COLORS.CUBE });
-    const limbMaterial = new THREE.MeshBasicMaterial({ color: CONFIG.COLORS.CUBE });
+    // Create varied colors for better differentiation
+    const hue = (this.variation * 0.3 + 0.3); // Green to blue-green range
+    const saturation = 0.6 + this.variation * 0.4;
+    const lightness = 0.4 + this.variation * 0.3;
+    const personColor = new THREE.Color().setHSL(hue, saturation, lightness);
     
-    // Head (sphere)
-    const headGeometry = new THREE.SphereGeometry(0.15, 8, 6);
+    // Slightly varied size for individuality
+    const sizeScale = 0.9 + this.variation * 0.2;
+    
+    // Better materials with lighting response
+    const bodyMaterial = new THREE.MeshLambertMaterial({ 
+      color: personColor,
+      transparent: false
+    });
+    const limbMaterial = new THREE.MeshLambertMaterial({ 
+      color: personColor.clone().multiplyScalar(0.9) // Slightly darker limbs
+    });
+    
+    // Head (more detailed sphere)
+    const headGeometry = new THREE.SphereGeometry(0.15 * sizeScale, 12, 8);
     const head = new THREE.Mesh(headGeometry, bodyMaterial);
-    head.position.set(0, 0.6, 0);
+    head.position.set(0, 0.6 * sizeScale, 0);
+    head.castShadow = true;
     this.group.add(head);
     
-    // Body (cylinder)
-    const bodyGeometry = new THREE.CylinderGeometry(0.08, 0.1, 0.6, 8);
+    // Body (more detailed cylinder with slight taper)
+    const bodyGeometry = new THREE.CylinderGeometry(0.08 * sizeScale, 0.1 * sizeScale, 0.6 * sizeScale, 12);
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-    body.position.set(0, 0.1, 0);
+    body.position.set(0, 0.1 * sizeScale, 0);
+    body.castShadow = true;
     this.group.add(body);
     
-    // Arms
-    const armGeometry = new THREE.CylinderGeometry(0.03, 0.03, 0.4, 6);
+    // Arms (more detailed with slight taper)
+    const armGeometry = new THREE.CylinderGeometry(0.025 * sizeScale, 0.035 * sizeScale, 0.4 * sizeScale, 8);
     
     this.leftArm = new THREE.Mesh(armGeometry, limbMaterial);
-    this.leftArm.position.set(-0.15, 0.25, 0);
+    this.leftArm.position.set(-0.15 * sizeScale, 0.25 * sizeScale, 0);
+    this.leftArm.castShadow = true;
     this.group.add(this.leftArm);
     
     this.rightArm = new THREE.Mesh(armGeometry, limbMaterial);
-    this.rightArm.position.set(0.15, 0.25, 0);
+    this.rightArm.position.set(0.15 * sizeScale, 0.25 * sizeScale, 0);
+    this.rightArm.castShadow = true;
     this.group.add(this.rightArm);
     
-    // Legs
-    const legGeometry = new THREE.CylinderGeometry(0.04, 0.04, 0.5, 6);
+    // Legs (more detailed with slight taper)
+    const legGeometry = new THREE.CylinderGeometry(0.03 * sizeScale, 0.05 * sizeScale, 0.5 * sizeScale, 8);
     
     this.leftLeg = new THREE.Mesh(legGeometry, limbMaterial);
-    this.leftLeg.position.set(-0.08, -0.45, 0);
+    this.leftLeg.position.set(-0.08 * sizeScale, -0.45 * sizeScale, 0);
+    this.leftLeg.castShadow = true;
     this.group.add(this.leftLeg);
     
     this.rightLeg = new THREE.Mesh(legGeometry, limbMaterial);
-    this.rightLeg.position.set(0.08, -0.45, 0);
+    this.rightLeg.position.set(0.08 * sizeScale, -0.45 * sizeScale, 0);
+    this.rightLeg.castShadow = true;
     this.group.add(this.rightLeg);
+    
+    // Add simple feet for better ground contact visual
+    const footGeometry = new THREE.BoxGeometry(0.12 * sizeScale, 0.04 * sizeScale, 0.08 * sizeScale);
+    const footMaterial = new THREE.MeshLambertMaterial({ color: personColor.clone().multiplyScalar(0.7) });
+    
+    const leftFoot = new THREE.Mesh(footGeometry, footMaterial);
+    leftFoot.position.set(-0.08 * sizeScale, -0.72 * sizeScale, 0.02 * sizeScale);
+    leftFoot.castShadow = true;
+    this.group.add(leftFoot);
+    
+    const rightFoot = new THREE.Mesh(footGeometry, footMaterial);
+    rightFoot.position.set(0.08 * sizeScale, -0.72 * sizeScale, 0.02 * sizeScale);
+    rightFoot.castShadow = true;
+    this.group.add(rightFoot);
     
     // Set initial position
     this.group.position.y = -0.3; // Adjust so feet are on ground
