@@ -13,3 +13,4 @@ Tech stack:
 - vite + React + tailwind (for any normal html)
 - three js for canvas rendering
 - mobx for state management
+- typescript
