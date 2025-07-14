@@ -53,3 +53,5 @@ can you create a config.ts file centralizes all of the configurable variables an
 can you replace each of the cubes with a stick person? how can I get 3d assets for that? Ideally their legs would move to simulate running
 
 Can you reduce hitbox size for the stick person? they are getting too spread out
+
+Can we add zombies coming towards the stick people. If one of the stick people touches a zombie that stick person is removed

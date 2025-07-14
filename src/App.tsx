@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { CONFIG } from "./config";
 import { StickPerson } from "./StickPerson";
+import { Zombie } from "./Zombie";
 
 const App = observer(() => {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -106,6 +107,9 @@ const App = observer(() => {
     const stickPeople: StickPerson[] = [firstStickPerson]; // Visual stick people
     const cubeVelocities: THREE.Vector3[] = [new THREE.Vector3(0, 0, 0)]; // Velocity for each cube
     let currentMobCount = 1;
+    
+    // Zombie system
+    const zombies: Zombie[] = [];
     
     // Gate pair tracking
     const triggeredPairs = new Set<number>();
@@ -253,6 +257,18 @@ const App = observer(() => {
         nextGateZ -= gateSpacing; // Move to next gate position
       }
       
+      // Spawn zombies randomly ahead of the camera
+      if (CONFIG.RNG.shouldSpawnZombie()) {
+        const newZombie = new Zombie();
+        newZombie.setPosition(
+          CONFIG.RNG.zombieSpawnX(),
+          -1,
+          camera.position.z + CONFIG.ZOMBIE_SPAWN_DISTANCE
+        );
+        scene.add(newZombie.group);
+        zombies.push(newZombie);
+      }
+      
       // Check gate collisions with individual cubes
       for (let i = gates.length - 1; i >= 0; i--) {
         const gate = gates[i];
@@ -348,6 +364,60 @@ const App = observer(() => {
           
           scene.remove(gate);
           gates.splice(i, 1);
+        }
+      }
+      
+      // Update zombies - move toward camera and check collisions
+      for (let i = zombies.length - 1; i >= 0; i--) {
+        const zombie = zombies[i];
+        
+        // Animate zombie
+        zombie.animate(0.016);
+        
+        // Move zombie toward camera (but slower than camera speed)
+        zombie.group.position.z += CONFIG.ZOMBIE_SPEED;
+        
+        // Check collisions with stick people
+        for (let j = stickPeople.length - 1; j >= 0; j--) {
+          const stickPerson = stickPeople[j];
+          const distance = zombie.getPosition().distanceTo(stickPerson.getPosition());
+          
+          if (distance < CONFIG.ZOMBIE_COLLISION_DISTANCE) {
+            // Zombie caught a stick person - remove both the stick person and cube
+            currentMobCount--;
+            
+            // Remove stick person
+            scene.remove(stickPerson.group);
+            stickPerson.dispose();
+            stickPeople.splice(j, 1);
+            
+            // Remove corresponding cube
+            const correspondingCube = cubes[j];
+            if (correspondingCube) {
+              scene.remove(correspondingCube);
+              correspondingCube.geometry.dispose();
+              (correspondingCube.material as THREE.Material).dispose();
+              cubes.splice(j, 1);
+              cubeVelocities.splice(j, 1);
+            }
+            
+            setMobCount(currentMobCount);
+            
+            // Check for game over
+            if (cubes.length === 0) {
+              gameRunning = false;
+              setGameOver(true);
+            }
+            
+            break; // Zombie can only catch one person at a time
+          }
+        }
+        
+        // Remove zombies that are too far behind camera
+        if (zombie.group.position.z > camera.position.z + CONFIG.ZOMBIE_CLEANUP_DISTANCE) {
+          scene.remove(zombie.group);
+          zombie.dispose();
+          zombies.splice(i, 1);
         }
       }
       
@@ -472,6 +542,13 @@ const App = observer(() => {
         scene.remove(gate);
       });
       gates.length = 0;
+      
+      // Clear all zombies
+      zombies.forEach(zombie => {
+        scene.remove(zombie.group);
+        zombie.dispose();
+      });
+      zombies.length = 0;
       
       // Clear all cubes and stick people
       while (cubes.length > 0) {

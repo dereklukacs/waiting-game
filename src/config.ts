@@ -16,17 +16,24 @@ export const CONFIG = {
   STICK_PERSON_LEG_SWING: 0.3,
   STICK_PERSON_ARM_SWING: 0.2,
   STICK_PERSON_BOB_HEIGHT: 0.05,
+  
+  // Zombie Properties
+  ZOMBIE_SPEED: 0.08, // Slightly slower than camera speed
+  ZOMBIE_SPAWN_DISTANCE: -50, // How far ahead zombies spawn
+  ZOMBIE_SPAWN_RATE: 0.02, // Probability per frame of spawning a zombie
+  ZOMBIE_COLLISION_DISTANCE: 0.5, // How close zombies need to be to "catch" stick people
+  ZOMBIE_CLEANUP_DISTANCE: 15, // Remove zombies this far behind camera
 
   // Physics
-  ATTRACTION_STRENGTH: 0.08, // Extremely strong attraction
-  ATTRACTION_MIN_DISTANCE: 0.05, // Almost no dead zone
-  HARD_REPULSION_STRENGTH: 0.01, // Extremely weak hard repulsion
-  HARD_REPULSION_MIN_DISTANCE: 0.1, // Extremely tiny hard repulsion zone
-  SOFT_REPULSION_STRENGTH: 0.001, // Practically no soft repulsion
-  SOFT_REPULSION_COMFORT_DISTANCE: 0.15, // Extremely tiny comfort distance
+  ATTRACTION_STRENGTH: 0.022, // Slightly reduced attraction
+  ATTRACTION_MIN_DISTANCE: 0.3, // Slightly larger dead zone
+  HARD_REPULSION_STRENGTH: 0.07, // Slightly stronger repulsion for breathing room
+  HARD_REPULSION_MIN_DISTANCE: 0.5, // Slightly larger hard repulsion zone
+  SOFT_REPULSION_STRENGTH: 0.018, // Slightly stronger soft repulsion
+  SOFT_REPULSION_COMFORT_DISTANCE: 0.8, // Slightly larger comfort distance
   VELOCITY_DAMPING: 0.85,
   MAX_VELOCITY: 0.1,
-  COLLISION_MIN_SEPARATION: 0.05, // Practically overlapping
+  COLLISION_MIN_SEPARATION: 0.25, // Slightly more personal space
 
   // Gate System
   GATE_SPACING: 10,
@@ -82,6 +89,7 @@ export const CONFIG = {
     ROAD_LINES: 0xffffff, // White
     STARS: 0xffffff, // White
     BACKGROUND: 0x000428, // Dark blue
+    ZOMBIE: 0x8b0000, // Dark red
   },
 
   // Mouse Controls
@@ -108,5 +116,9 @@ export const CONFIG = {
 
     // Blue gate duplication check
     shouldDuplicate: () => Math.random() < CONFIG.BLUE_GATE_DUPLICATION_CHANCE,
+    
+    // Zombie spawning
+    shouldSpawnZombie: () => Math.random() < CONFIG.ZOMBIE_SPAWN_RATE,
+    zombieSpawnX: () => (Math.random() - 0.5) * 4, // Across road width
   },
 };
