@@ -3,7 +3,11 @@ class StatusManager {
     this.state = 'working';
     this.lastUpdate = Date.now();
     this.listeners = [];
+    this.idleTimeout = null;
+    this.IDLE_THRESHOLD = 30000; // 30 seconds of inactivity = idle
     console.log('[StatusManager] Starting in working state');
+    
+    this.startIdleTimer();
   }
 
   setState(newState) {
@@ -12,6 +16,9 @@ class StatusManager {
     this.lastUpdate = Date.now();
     
     console.log(`[StatusManager] State changed: ${previousState} → ${newState}`);
+    
+    // Reset idle timer on any state change
+    this.startIdleTimer();
     
     this.listeners.forEach(listener => {
       try {
@@ -50,6 +57,28 @@ class StatusManager {
 
   markToolExecuting() {
     this.setState('tool-executing');
+  }
+
+  startIdleTimer() {
+    // Clear existing timer
+    if (this.idleTimeout) {
+      clearTimeout(this.idleTimeout);
+    }
+    
+    // Only set idle timer if not already idle
+    if (this.state !== 'idle') {
+      this.idleTimeout = setTimeout(() => {
+        console.log('[StatusManager] No activity detected, marking as idle');
+        this.setState('idle');
+      }, this.IDLE_THRESHOLD);
+    }
+  }
+
+  cleanup() {
+    if (this.idleTimeout) {
+      clearTimeout(this.idleTimeout);
+      this.idleTimeout = null;
+    }
   }
 }
 

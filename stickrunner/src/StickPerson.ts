@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { CONFIG } from './config';
 
 export class StickPerson {
   public group: THREE.Group;
@@ -132,7 +131,7 @@ export class StickPerson {
     }
   }
   
-  public setPosition(x: number, y: number, z: number) {
+  public setPosition(x: number, _y: number, z: number) {
     this.group.position.x = x;
     this.group.position.z = z;
     // Y is handled by animation unless falling

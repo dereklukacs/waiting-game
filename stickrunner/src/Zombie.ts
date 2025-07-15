@@ -108,7 +108,7 @@ export class Zombie {
     this.group.position.y = -0.25 + bobHeight;
   }
   
-  public setPosition(x: number, y: number, z: number) {
+  public setPosition(x: number, _y: number, z: number) {
     this.group.position.x = x;
     this.group.position.z = z;
     // Y is handled by animation

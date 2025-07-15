@@ -4,11 +4,23 @@ import * as THREE from "three";
 import { CONFIG } from "./config";
 import { StickPerson } from "./StickPerson";
 import { Zombie } from "./Zombie";
+import { useClaudeStatus } from "./hooks/useClaudeStatus";
 
 const App = observer(() => {
   const mountRef = useRef<HTMLDivElement>(null);
   const [mobCount, setMobCount] = useState(1);
   const [gameOver, setGameOver] = useState(false);
+  
+  // Get server port from URL params (default to 3001)
+  const urlParams = new URLSearchParams(window.location.search);
+  const serverPort = parseInt(urlParams.get('serverPort') || '3001');
+  const { status: claudeStatus, isConnected, error } = useClaudeStatus(serverPort);
+  const claudeStatusRef = useRef(claudeStatus);
+
+  // Update ref whenever claudeStatus changes
+  useEffect(() => {
+    claudeStatusRef.current = claudeStatus;
+  }, [claudeStatus]);
 
   useEffect(() => {
     if (!mountRef.current) return;
@@ -137,7 +149,7 @@ const App = observer(() => {
     const zombies: Zombie[] = [];
     
     // Gate pair tracking
-    const triggeredPairs = new Set<number>();
+    const triggeredPairs = new Set<string>();
     
     // Magnetic point controls (invisible point that all cubes are attracted to)
     const magnetPoint = new THREE.Vector3(0, -1, 0); // Starting position
@@ -260,8 +272,19 @@ const App = observer(() => {
     // Animation loop
     let animationId: number;
     let gameRunning = true;
+    let gamePaused = false;
     const animate = () => {
       if (!gameRunning) return; // Stop animation if game over
+      
+      // Check if game should be paused based on Claude status (use ref for current value)
+      gamePaused = claudeStatusRef.current?.state === 'idle';
+      
+      if (gamePaused) {
+        // If paused, keep checking for unpause
+        setTimeout(() => animate(), 100);
+        return;
+      }
+      
       animationId = requestAnimationFrame(animate);
       
       // Move camera forward along the road
@@ -695,6 +718,41 @@ const App = observer(() => {
       <div className="absolute top-4 left-4 bg-black bg-opacity-50 text-white px-4 py-2 rounded-lg text-xl font-bold">
         Cubes: {mobCount}
       </div>
+      
+      {/* Claude Status Display */}
+      <div className="absolute top-4 right-4 bg-black bg-opacity-50 text-white px-4 py-2 rounded-lg">
+        <div className="text-sm font-semibold mb-1">Claude Status</div>
+        {isConnected ? (
+          <div className="flex items-center gap-2">
+            <div className={`w-3 h-3 rounded-full ${
+              claudeStatus?.state === 'idle' ? 'bg-green-500' :
+              claudeStatus?.state === 'working' ? 'bg-yellow-500' :
+              claudeStatus?.state === 'tool-executing' ? 'bg-red-500' :
+              'bg-gray-500'
+            }`}></div>
+            <span className="text-sm capitalize">
+              {claudeStatus?.state === 'tool-executing' ? 'Tool Running' : claudeStatus?.state || 'Unknown'}
+            </span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-gray-500"></div>
+            <span className="text-sm text-red-300">
+              {error ? 'Connection Error' : 'Connecting...'}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Game Paused Overlay */}
+      {claudeStatus?.state === 'idle' && (
+        <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center pointer-events-none">
+          <div className="bg-white rounded-lg p-6 text-center shadow-lg">
+            <h2 className="text-2xl font-bold text-green-600 mb-2">Game Paused</h2>
+            <p className="text-gray-700">Claude is idle - ask Claude something to resume!</p>
+          </div>
+        </div>
+      )}
       
       {gameOver && (
         <div className="absolute inset-0 bg-black bg-opacity-75 flex items-center justify-center">
