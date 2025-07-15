@@ -87,3 +87,19 @@ let's stop referring to things as cubes. Let's call them challengers
 I want to set a username, this should be set on first visiting the page and cached in localstorage
 
 I want to be able to edit the username
+
+=========
+
+## Multiplayer phase
+
+I now want to make this app multiplayer.
+
+There will be no auth.
+
+I want to use a golang server and websockets.
+
+First, let's create the golang server and have the game client register with it by sending it's username and just getting that back.
+
+can you store commands in a makefile for the backend? keep it really simple and only the basics
+
+can you show the number of online players on the frontend

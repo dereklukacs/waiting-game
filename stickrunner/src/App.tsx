@@ -1,13 +1,14 @@
 import { observer } from "mobx-react-lite";
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import { Edit3, Check, X } from "lucide-react";
+import { Edit3, Check, X, Wifi, WifiOff } from "lucide-react";
 import { CONFIG } from "./config";
 import { StickPerson } from "./StickPerson";
 import { Zombie } from "./Zombie";
 import { Bullet } from "./Bullet";
 import { Obstacle } from "./Obstacle";
 import { useClaudeStatus } from "./hooks/useClaudeStatus";
+import { useMultiplayerConnection } from "./hooks/useMultiplayerConnection";
 
 const App = observer(() => {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -19,6 +20,7 @@ const App = observer(() => {
   const [showUsernameModal, setShowUsernameModal] = useState(false);
   const [usernameInput, setUsernameInput] = useState('');
   const [editingUsername, setEditingUsername] = useState(false);
+  const [multiplayerMessage, setMultiplayerMessage] = useState<string>('');
 
   // Get server port from URL params (default to 3001)
   const urlParams = new URLSearchParams(window.location.search);
@@ -29,6 +31,29 @@ const App = observer(() => {
     error,
   } = useClaudeStatus(serverPort);
   const claudeStatusRef = useRef(claudeStatus);
+
+  // Multiplayer connection - only connect when username is set
+  const {
+    isConnected: multiplayerConnected,
+    isRegistered: multiplayerRegistered,
+    connectionStatus: multiplayerStatus,
+  } = useMultiplayerConnection({
+    serverUrl: 'ws://localhost:8080/ws',
+    username: username && username.trim() ? username : '', // Only pass username if it's valid
+    onConnected: () => {
+      console.log('Multiplayer connected');
+    },
+    onRegistered: (data) => {
+      console.log('Multiplayer registered:', data);
+      setMultiplayerMessage(data.message);
+      setTimeout(() => setMultiplayerMessage(''), 3000);
+    },
+    onError: (error) => {
+      console.error('Multiplayer error:', error);
+      setMultiplayerMessage(`Error: ${error}`);
+      setTimeout(() => setMultiplayerMessage(''), 3000);
+    },
+  });
 
   // Update ref whenever claudeStatus changes
   useEffect(() => {
@@ -1044,40 +1069,66 @@ const App = observer(() => {
         <div className="text-xl font-bold">Challengers: {mobCount}</div>
       </div>
 
-      {/* Claude Status Display */}
-      <div className="absolute top-4 right-4 bg-black/50 text-white px-4 py-2 rounded-lg">
-        <div className="text-sm font-semibold mb-1">Claude Status</div>
-        {isConnected ? (
-          <div className="flex items-center gap-2">
-            <div
-              className={`w-3 h-3 rounded-full ${
-                claudeStatus?.state === "idle"
-                  ? "bg-green-500"
-                  : claudeStatus?.state === "working"
-                  ? "bg-yellow-500"
-                  : claudeStatus?.state === "tool-executing"
-                  ? "bg-red-500"
+      {/* Status Display */}
+      <div className="absolute top-4 right-4 bg-black/50 text-white px-4 py-2 rounded-lg space-y-3">
+        {/* Claude Status */}
+        <div>
+          <div className="text-sm font-semibold mb-1">Claude Status</div>
+          {isConnected ? (
+            <div className="flex items-center gap-2">
+              <div
+                className={`w-3 h-3 rounded-full ${
+                  claudeStatus?.state === "idle"
+                    ? "bg-green-500"
+                    : claudeStatus?.state === "working"
+                    ? "bg-yellow-500"
+                    : claudeStatus?.state === "tool-executing"
+                    ? "bg-red-500"
+                    : claudeStatus?.state === "waiting-permission"
+                    ? "bg-blue-500"
+                    : "bg-gray-500"
+                }`}
+              ></div>
+              <span className="text-sm capitalize">
+                {claudeStatus?.state === "tool-executing"
+                  ? "Tool Running"
                   : claudeStatus?.state === "waiting-permission"
-                  ? "bg-blue-500"
-                  : "bg-gray-500"
-              }`}
-            ></div>
-            <span className="text-sm capitalize">
-              {claudeStatus?.state === "tool-executing"
-                ? "Tool Running"
-                : claudeStatus?.state === "waiting-permission"
-                ? "Waiting Permission"
-                : claudeStatus?.state || "Unknown"}
-            </span>
-          </div>
-        ) : (
+                  ? "Waiting Permission"
+                  : claudeStatus?.state || "Unknown"}
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-gray-500"></div>
+              <span className="text-sm text-red-300">
+                {error ? "Connection Error" : "Connecting..."}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Multiplayer Status */}
+        <div>
+          <div className="text-sm font-semibold mb-1">Multiplayer</div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-gray-500"></div>
-            <span className="text-sm text-red-300">
-              {error ? "Connection Error" : "Connecting..."}
+            {multiplayerConnected ? (
+              <Wifi size={14} className="text-green-400" />
+            ) : (
+              <WifiOff size={14} className="text-red-400" />
+            )}
+            <span className="text-sm capitalize">
+              {multiplayerStatus === 'registered' ? 'Online' : 
+               multiplayerStatus === 'connected' ? 'Connecting...' :
+               multiplayerStatus === 'connecting' ? 'Connecting...' :
+               'Offline'}
             </span>
           </div>
-        )}
+          {multiplayerMessage && (
+            <div className="text-xs text-gray-300 mt-1 max-w-48 truncate">
+              {multiplayerMessage}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Game Paused Overlay */}
