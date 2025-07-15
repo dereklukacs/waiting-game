@@ -59,3 +59,5 @@ Can we add zombies coming towards the stick people. If one of the stick people t
 improve the look of the stick figure, ideally we should have 3d structures and proper shadows and illumination so we can better differentiate the characters
 
 the scene is too dark, the road and figures are not vibrant enough
+
+can we add a mechanic that if a stick figure is no longer on the road it falls off and gets removed. add the falling animation.

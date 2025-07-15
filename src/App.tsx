@@ -447,11 +447,49 @@ const App = observer(() => {
       }
       
       // Update ALL cubes with proper velocity-based physics
-      cubes.forEach((mobCube, index) => {
+      for (let index = cubes.length - 1; index >= 0; index--) {
+        const mobCube = cubes[index];
         // Update corresponding stick person animation
         const stickPerson = stickPeople[index];
         if (stickPerson) {
           stickPerson.animate(0.016); // Assuming ~60fps
+          
+          // Check if stick person has fallen off the road
+          if (!stickPerson.isFalling && (mobCube.position.x < CONFIG.ROAD_BOUNDARY_LEFT || mobCube.position.x > CONFIG.ROAD_BOUNDARY_RIGHT)) {
+            stickPerson.startFalling();
+          }
+          
+          // Remove stick person if it has fallen too far
+          if (stickPerson.isFalling && stickPerson.getPosition().y < CONFIG.FALL_CLEANUP_Y) {
+            currentMobCount--;
+            
+            // Remove stick person
+            scene.remove(stickPerson.group);
+            stickPerson.dispose();
+            stickPeople.splice(index, 1);
+            
+            // Remove corresponding cube
+            scene.remove(mobCube);
+            mobCube.geometry.dispose();
+            (mobCube.material as THREE.Material).dispose();
+            cubes.splice(index, 1);
+            cubeVelocities.splice(index, 1);
+            
+            setMobCount(currentMobCount);
+            
+            // Check for game over
+            if (cubes.length === 0) {
+              gameRunning = false;
+              setGameOver(true);
+            }
+            
+            continue; // Skip physics processing for removed cube
+          }
+        }
+        
+        // Skip physics for falling stick people - they just fall
+        if (stickPerson && stickPerson.isFalling) {
+          continue;
         }
         
         // Move forward with camera
@@ -523,8 +561,8 @@ const App = observer(() => {
         mobCube.position.x += velocity.x;
         mobCube.position.z += velocity.z;
         
-        // Sync stick person position with collision box
-        if (stickPerson) {
+        // Sync stick person position with collision box (only if not falling)
+        if (stickPerson && !stickPerson.isFalling) {
           stickPerson.setPosition(mobCube.position.x, mobCube.position.y, mobCube.position.z);
         }
         
@@ -549,7 +587,7 @@ const App = observer(() => {
         
         // Keep cubes on the road surface
         mobCube.position.y = -1;
-      });
+      }
       
       renderer.render(scene, camera);
     };

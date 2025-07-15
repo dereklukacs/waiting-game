@@ -65,6 +65,9 @@ export const CONFIG = {
     LEFT: -2.8,
     RIGHT: 2.8,
   },
+  ROAD_BOUNDARY_LEFT: -3.2,  // Left edge of road for boundary checking
+  ROAD_BOUNDARY_RIGHT: 3.2,  // Right edge of road for boundary checking
+  FALL_CLEANUP_Y: -10,       // Y position at which to remove fallen figures
 
   // Camera Properties
   CAMERA_FOV: 75,

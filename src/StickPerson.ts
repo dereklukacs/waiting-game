@@ -9,6 +9,9 @@ export class StickPerson {
   public rightArm: THREE.Mesh;
   private animationTime: number = 0;
   private variation: number;
+  public isFalling: boolean = false;
+  private fallVelocity: number = 0;
+  private fallRotationVelocity: number = 0;
 
   constructor() {
     this.group = new THREE.Group();
@@ -91,29 +94,57 @@ export class StickPerson {
   }
   
   public animate(deltaTime: number) {
-    this.animationTime += deltaTime * 8; // Running speed
-    
-    // Running animation - legs alternate
-    const legSwing = Math.sin(this.animationTime) * 0.3;
-    const armSwing = Math.sin(this.animationTime + Math.PI) * 0.2; // Arms opposite to legs
-    
-    // Leg animation (rotate around X axis for forward/back motion)
-    this.leftLeg.rotation.x = legSwing;
-    this.rightLeg.rotation.x = -legSwing;
-    
-    // Arm animation (subtle arm swing)
-    this.leftArm.rotation.x = armSwing;
-    this.rightArm.rotation.x = -armSwing;
-    
-    // Slight bob up and down
-    const bobHeight = Math.abs(Math.sin(this.animationTime * 2)) * 0.05;
-    this.group.position.y = -0.3 + bobHeight;
+    if (this.isFalling) {
+      // Falling animation
+      this.fallVelocity += 0.01; // Gravity acceleration
+      this.group.position.y -= this.fallVelocity;
+      
+      // Add tumbling rotation while falling
+      this.fallRotationVelocity += 0.02;
+      this.group.rotation.x += this.fallRotationVelocity * deltaTime * 10;
+      this.group.rotation.z += this.fallRotationVelocity * deltaTime * 8;
+      
+      // Flail arms and legs while falling
+      const flailTime = Date.now() * 0.02;
+      this.leftArm.rotation.x = Math.sin(flailTime * 3) * 0.8;
+      this.rightArm.rotation.x = Math.sin(flailTime * 2.5) * 0.8;
+      this.leftLeg.rotation.x = Math.sin(flailTime * 2.8) * 0.6;
+      this.rightLeg.rotation.x = Math.sin(flailTime * 3.2) * 0.6;
+    } else {
+      // Normal running animation
+      this.animationTime += deltaTime * 8; // Running speed
+      
+      // Running animation - legs alternate
+      const legSwing = Math.sin(this.animationTime) * 0.3;
+      const armSwing = Math.sin(this.animationTime + Math.PI) * 0.2; // Arms opposite to legs
+      
+      // Leg animation (rotate around X axis for forward/back motion)
+      this.leftLeg.rotation.x = legSwing;
+      this.rightLeg.rotation.x = -legSwing;
+      
+      // Arm animation (subtle arm swing)
+      this.leftArm.rotation.x = armSwing;
+      this.rightArm.rotation.x = -armSwing;
+      
+      // Slight bob up and down
+      const bobHeight = Math.abs(Math.sin(this.animationTime * 2)) * 0.05;
+      this.group.position.y = -0.3 + bobHeight;
+    }
   }
   
   public setPosition(x: number, y: number, z: number) {
     this.group.position.x = x;
     this.group.position.z = z;
-    // Y is handled by animation
+    // Y is handled by animation unless falling
+    if (!this.isFalling) {
+      // Y position handled by animation for non-falling figures
+    }
+  }
+  
+  public startFalling() {
+    this.isFalling = true;
+    this.fallVelocity = 0;
+    this.fallRotationVelocity = (Math.random() - 0.5) * 0.1; // Random initial rotation
   }
   
   public getPosition(): THREE.Vector3 {
