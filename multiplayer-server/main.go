@@ -14,10 +14,13 @@ import (
 
 // Message types
 const (
-	MessageTypeRegister    = "register"
-	MessageTypeResponse    = "response"
-	MessageTypeError       = "error"
-	MessageTypePlayerCount = "player_count"
+	MessageTypeRegister      = "register"
+	MessageTypeResponse      = "response"
+	MessageTypeError         = "error"
+	MessageTypePlayerCount   = "player_count"
+	MessageTypeScoreUpdate   = "score_update"
+	MessageTypeLiveLeaderboard = "live_leaderboard"
+	MessageTypeAllTimeLeaderboard = "alltime_leaderboard"
 )
 
 // Message represents a WebSocket message
@@ -44,11 +47,28 @@ type PlayerCountData struct {
 	Count int `json:"count"`
 }
 
+// ScoreUpdateData represents score update data
+type ScoreUpdateData struct {
+	Score int `json:"score"`
+}
+
+// LeaderboardEntry represents a leaderboard entry
+type LeaderboardEntry struct {
+	Username string `json:"username"`
+	Score    int    `json:"score"`
+}
+
+// LeaderboardData represents leaderboard data
+type LeaderboardData struct {
+	Entries []LeaderboardEntry `json:"entries"`
+}
+
 // Client represents a connected client
 type Client struct {
 	ID       string
 	Username string
 	DeviceID string
+	Score    int
 	Conn     *websocket.Conn
 	Send     chan []byte
 }
@@ -69,6 +89,9 @@ type Hub struct {
 
 	// Mutex for thread-safe operations
 	mutex sync.RWMutex
+
+	// All-time high scores (persistent storage would be better)
+	allTimeScores []LeaderboardEntry
 }
 
 func newHub() *Hub {
@@ -77,6 +100,7 @@ func newHub() *Hub {
 		deviceClients: make(map[string]*Client),
 		register:      make(chan *Client),
 		unregister:    make(chan *Client),
+		allTimeScores: make([]LeaderboardEntry, 0),
 	}
 }
 
@@ -231,6 +255,8 @@ func (c *Client) readPump(hub *Hub) {
 		switch msg.Type {
 		case MessageTypeRegister:
 			c.handleRegister(msg)
+		case MessageTypeScoreUpdate:
+			c.handleScoreUpdate(hub, msg)
 		default:
 			log.Printf("Unknown message type: %s", msg.Type)
 		}
@@ -291,6 +317,160 @@ func (c *Client) handleRegister(msg Message) {
 	log.Printf("User registered: %s", regData.Username)
 }
 
+func (c *Client) handleScoreUpdate(hub *Hub, msg Message) {
+	// Parse score update data
+	dataBytes, err := json.Marshal(msg.Data)
+	if err != nil {
+		c.sendError("Failed to process score update data")
+		return
+	}
+
+	var scoreData ScoreUpdateData
+	if err := json.Unmarshal(dataBytes, &scoreData); err != nil {
+		c.sendError("Invalid score update data format")
+		return
+	}
+
+	// Update client score
+	c.Score = scoreData.Score
+	log.Printf("Score updated for %s: %d", c.Username, c.Score)
+
+	// Update all-time high scores if this is a new high score
+	hub.updateAllTimeScores(c.Username, c.Score)
+	
+	// Broadcast updated all-time leaderboard
+	hub.broadcastAllTimeLeaderboard()
+}
+
+func (h *Hub) updateAllTimeScores(username string, score int) {
+	h.mutex.Lock()
+	defer h.mutex.Unlock()
+
+	// Check if user already has a score in all-time leaderboard
+	found := false
+	for i := range h.allTimeScores {
+		if h.allTimeScores[i].Username == username {
+			if score > h.allTimeScores[i].Score {
+				h.allTimeScores[i].Score = score
+			}
+			found = true
+			break
+		}
+	}
+
+	// If not found, add new entry
+	if !found {
+		h.allTimeScores = append(h.allTimeScores, LeaderboardEntry{
+			Username: username,
+			Score:    score,
+		})
+	}
+
+	// Sort by score (descending)
+	for i := 0; i < len(h.allTimeScores); i++ {
+		for j := i + 1; j < len(h.allTimeScores); j++ {
+			if h.allTimeScores[j].Score > h.allTimeScores[i].Score {
+				h.allTimeScores[i], h.allTimeScores[j] = h.allTimeScores[j], h.allTimeScores[i]
+			}
+		}
+	}
+
+	// Keep only top 10 all-time scores
+	if len(h.allTimeScores) > 10 {
+		h.allTimeScores = h.allTimeScores[:10]
+	}
+}
+
+func (h *Hub) getLiveLeaderboard() []LeaderboardEntry {
+	h.mutex.RLock()
+	defer h.mutex.RUnlock()
+
+	// Collect current scores from active players
+	var entries []LeaderboardEntry
+	for client := range h.clients {
+		if client.Username != "" {
+			entries = append(entries, LeaderboardEntry{
+				Username: client.Username,
+				Score:    client.Score,
+			})
+		}
+	}
+
+	// Sort by score (descending)
+	for i := 0; i < len(entries); i++ {
+		for j := i + 1; j < len(entries); j++ {
+			if entries[j].Score > entries[i].Score {
+				entries[i], entries[j] = entries[j], entries[i]
+			}
+		}
+	}
+
+	// Return top 5
+	if len(entries) > 5 {
+		return entries[:5]
+	}
+	return entries
+}
+
+func (h *Hub) broadcastLiveLeaderboard() {
+	entries := h.getLiveLeaderboard()
+
+	message := Message{
+		Type: MessageTypeLiveLeaderboard,
+		Data: LeaderboardData{
+			Entries: entries,
+		},
+	}
+
+	messageBytes, err := json.Marshal(message)
+	if err != nil {
+		log.Printf("Failed to marshal live leaderboard message: %v", err)
+		return
+	}
+
+	h.mutex.RLock()
+	for client := range h.clients {
+		select {
+		case client.Send <- messageBytes:
+		default:
+			close(client.Send)
+			delete(h.clients, client)
+		}
+	}
+	h.mutex.RUnlock()
+}
+
+func (h *Hub) broadcastAllTimeLeaderboard() {
+	h.mutex.RLock()
+	allTimeEntries := make([]LeaderboardEntry, len(h.allTimeScores))
+	copy(allTimeEntries, h.allTimeScores)
+	h.mutex.RUnlock()
+
+	message := Message{
+		Type: MessageTypeAllTimeLeaderboard,
+		Data: LeaderboardData{
+			Entries: allTimeEntries,
+		},
+	}
+
+	messageBytes, err := json.Marshal(message)
+	if err != nil {
+		log.Printf("Failed to marshal all-time leaderboard message: %v", err)
+		return
+	}
+
+	h.mutex.RLock()
+	for client := range h.clients {
+		select {
+		case client.Send <- messageBytes:
+		default:
+			close(client.Send)
+			delete(h.clients, client)
+		}
+	}
+	h.mutex.RUnlock()
+}
+
 func (c *Client) sendError(message string) {
 	errorMsg := Message{
 		Type: MessageTypeError,
@@ -336,6 +516,16 @@ func serveWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
 func main() {
 	hub := newHub()
 	go hub.run()
+
+	// Start periodic leaderboard broadcasting
+	go func() {
+		ticker := time.NewTicker(500 * time.Millisecond) // Every 500ms
+		defer ticker.Stop()
+		
+		for range ticker.C {
+			hub.broadcastLiveLeaderboard()
+		}
+	}()
 
 	// WebSocket endpoint
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {

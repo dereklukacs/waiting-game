@@ -23,6 +23,9 @@ const App = observer(() => {
   const [multiplayerMessage, setMultiplayerMessage] = useState<string>("");
   const [onlinePlayerCount, setOnlinePlayerCount] = useState<number>(0);
   const [deviceId, setDeviceId] = useState<string>("");
+  const [score, setScore] = useState<number>(0);
+  const [liveLeaderboard, setLiveLeaderboard] = useState<Array<{username: string, score: number}>>([]);
+  const [allTimeLeaderboard, setAllTimeLeaderboard] = useState<Array<{username: string, score: number}>>([]);
 
   // Get server port from URL params (default to 3001)
   const urlParams = new URLSearchParams(window.location.search);
@@ -37,8 +40,8 @@ const App = observer(() => {
   // Multiplayer connection - only connect when username is set
   const {
     isConnected: multiplayerConnected,
-
     connectionStatus: multiplayerStatus,
+    updateScore,
   } = useMultiplayerConnection({
     serverUrl: import.meta.env.PROD
       ? "wss://waiting-game-production.up.railway.app/ws"
@@ -55,6 +58,12 @@ const App = observer(() => {
     },
     onPlayerCountUpdate: (count) => {
       setOnlinePlayerCount(count);
+    },
+    onLiveLeaderboardUpdate: (data) => {
+      setLiveLeaderboard(data.entries);
+    },
+    onAllTimeLeaderboardUpdate: (data) => {
+      setAllTimeLeaderboard(data.entries);
     },
     onError: (error) => {
       console.error("Multiplayer error:", error);
@@ -627,7 +636,7 @@ const App = observer(() => {
             .distanceTo(zombie.getPosition());
 
           if (bulletDistance < CONFIG.BULLET_DAMAGE_DISTANCE) {
-            // Bullet hit zombie - remove both
+            // Bullet hit zombie - remove both and increment score
             console.log(`Zombie hit! Distance: ${bulletDistance.toFixed(2)}`);
             scene.remove(bullet.mesh);
             bullet.dispose();
@@ -636,6 +645,17 @@ const App = observer(() => {
             scene.remove(zombie.group);
             zombie.dispose();
             zombies.splice(i, 1);
+            
+            // Increment score for killing a zombie
+            setScore(prevScore => {
+              const newScore = prevScore + 1;
+              // Send score update to server
+              if (updateScore) {
+                updateScore(newScore);
+              }
+              return newScore;
+            });
+            
             zombieHit = true;
             break;
           }
@@ -1010,6 +1030,14 @@ const App = observer(() => {
 
       // Clear triggered pairs
       triggeredPairs.clear();
+      
+      // Reset score
+      setScore(0);
+      
+      // Send reset score to server
+      if (updateScore) {
+        updateScore(0);
+      }
 
       // Restart animation
       animate();
@@ -1086,6 +1114,7 @@ const App = observer(() => {
           </div>
         )}
         <div className="text-xl font-bold">Challengers: {mobCount}</div>
+        <div className="text-lg font-semibold text-yellow-400">Score: {score}</div>
       </div>
 
       {/* Status Display */}
@@ -1157,6 +1186,40 @@ const App = observer(() => {
             </div>
           )}
         </div>
+
+        {/* Live Leaderboard */}
+        {multiplayerConnected && liveLeaderboard.length > 0 && (
+          <div>
+            <div className="text-sm font-semibold mb-1">Live Leaderboard</div>
+            <div className="space-y-1">
+              {liveLeaderboard.slice(0, 5).map((entry, index) => (
+                <div key={entry.username} className="flex justify-between text-xs">
+                  <span className={`${entry.username === username ? 'text-yellow-400 font-bold' : 'text-gray-300'}`}>
+                    {index + 1}. {entry.username}
+                  </span>
+                  <span className="text-white">{entry.score}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* All-Time Leaderboard */}
+        {multiplayerConnected && allTimeLeaderboard.length > 0 && (
+          <div>
+            <div className="text-sm font-semibold mb-1">All-Time Best</div>
+            <div className="space-y-1">
+              {allTimeLeaderboard.slice(0, 5).map((entry, index) => (
+                <div key={entry.username} className="flex justify-between text-xs">
+                  <span className={`${entry.username === username ? 'text-yellow-400 font-bold' : 'text-gray-300'}`}>
+                    {index + 1}. {entry.username}
+                  </span>
+                  <span className="text-white">{entry.score}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Game Paused Overlay */}

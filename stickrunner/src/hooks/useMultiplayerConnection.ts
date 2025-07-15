@@ -20,6 +20,15 @@ interface PlayerCountData {
   count: number;
 }
 
+interface LeaderboardEntry {
+  username: string;
+  score: number;
+}
+
+interface LeaderboardData {
+  entries: LeaderboardEntry[];
+}
+
 interface UseMultiplayerConnectionProps {
   serverUrl: string;
   username: string;
@@ -28,6 +37,8 @@ interface UseMultiplayerConnectionProps {
   onDisconnected?: () => void;
   onRegistered?: (data: ResponseData) => void;
   onPlayerCountUpdate?: (count: number) => void;
+  onLiveLeaderboardUpdate?: (data: LeaderboardData) => void;
+  onAllTimeLeaderboardUpdate?: (data: LeaderboardData) => void;
   onError?: (error: string) => void;
 }
 
@@ -39,6 +50,8 @@ export const useMultiplayerConnection = ({
   onDisconnected,
   onRegistered,
   onPlayerCountUpdate,
+  onLiveLeaderboardUpdate,
+  onAllTimeLeaderboardUpdate,
   onError,
 }: UseMultiplayerConnectionProps) => {
   const [isConnected, setIsConnected] = useState(false);
@@ -157,6 +170,16 @@ export const useMultiplayerConnection = ({
           onPlayerCountUpdate?.(playerCountData.count);
           break;
 
+        case "live_leaderboard":
+          const liveLeaderboardData = message.data as LeaderboardData;
+          onLiveLeaderboardUpdate?.(liveLeaderboardData);
+          break;
+
+        case "alltime_leaderboard":
+          const allTimeLeaderboardData = message.data as LeaderboardData;
+          onAllTimeLeaderboardUpdate?.(allTimeLeaderboardData);
+          break;
+
         case "error":
           const errorMessage = message.data?.message || "Unknown error";
           console.error("Server error:", errorMessage);
@@ -181,6 +204,16 @@ export const useMultiplayerConnection = ({
     };
   }, [username, deviceId]); // Include deviceId in dependencies
 
+  const updateScore = useCallback((score: number) => {
+    const scoreMessage: MultiplayerMessage = {
+      type: "score_update",
+      data: {
+        score: score,
+      },
+    };
+    sendMessage(scoreMessage);
+  }, [sendMessage]);
+
   // Reconnect when username or deviceId changes
   useEffect(() => {
     if (isConnected && username && deviceId && !isRegistered) {
@@ -196,5 +229,6 @@ export const useMultiplayerConnection = ({
     disconnect,
     sendMessage,
     register,
+    updateScore,
   };
 };
