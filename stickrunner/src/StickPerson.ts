@@ -20,6 +20,9 @@ export class StickPerson {
   private deathStartTime: number = 0;
   private originalMaterials: THREE.Material[] = [];
   private deathMaterial: THREE.MeshLambertMaterial;
+  private deathDuration: number = 500; // Base duration, will be randomized
+  private deathFallAngle: number = 0; // Random fall angle
+  private deathFallDistance: number = 0; // Random fall distance
 
   constructor() {
     this.group = new THREE.Group();
@@ -43,7 +46,7 @@ export class StickPerson {
       color: personColor.clone().multiplyScalar(0.9) // Slightly darker limbs
     });
     
-    // Create death material (red)
+    // Create death material (red with slight variation)
     this.deathMaterial = new THREE.MeshLambertMaterial({ 
       color: 0xff0000,
       transparent: false
@@ -129,10 +132,10 @@ export class StickPerson {
     // Manual jumping only - no auto-jump
     
     if (this.isDying) {
-      // Death animation - turn red and fall over in 500ms
-      const deathProgress = Math.min((Date.now() - this.deathStartTime) / 500, 1); // 500ms duration
+      // Death animation - turn red and fall over with randomized parameters
+      const deathProgress = Math.min((Date.now() - this.deathStartTime) / this.deathDuration, 1);
       
-      // Change color to red progressively
+      // Change color to randomized red hue progressively
       let materialIndex = 0;
       this.group.traverse((child) => {
         if (child instanceof THREE.Mesh && child.material) {
@@ -148,11 +151,20 @@ export class StickPerson {
         }
       });
       
-      // Fall over - rotate the entire group
-      this.group.rotation.z = deathProgress * Math.PI * 0.5; // 90 degrees
+      // Fall over at randomized angle with slight easing
+      const easedProgress = deathProgress * deathProgress * (3 - 2 * deathProgress); // Smooth step easing
+      this.group.rotation.z = easedProgress * this.deathFallAngle;
       
-      // Fall down slightly
-      this.group.position.y = CONFIG.STICK_PERSON_GROUND_Y - (deathProgress * 0.3);
+      // Fall down slightly with randomized timing
+      const fallProgress = Math.min(deathProgress * 1.5, 1); // Fall slightly faster than rotation
+      this.group.position.y = CONFIG.STICK_PERSON_GROUND_Y - (fallProgress * this.deathFallDistance);
+      
+      // Add slight random wobble during death
+      if (deathProgress < 0.8) {
+        const wobbleFreq = 20 + Math.random() * 10;
+        const wobbleAmount = (1 - deathProgress) * 0.05;
+        this.group.rotation.x = Math.sin(Date.now() * wobbleFreq * 0.001) * wobbleAmount;
+      }
       
       return; // Don't do other animations while dying
     } else if (this.isFalling) {
@@ -269,10 +281,21 @@ export class StickPerson {
   public startDying() {
     this.isDying = true;
     this.deathStartTime = Date.now();
+    
+    // Randomize death parameters
+    this.deathDuration = 400 + Math.random() * 200; // 400-600ms random duration
+    this.deathFallAngle = (Math.random() - 0.5) * Math.PI * 0.3 + Math.PI * 0.5; // 45-135 degrees fall angle
+    this.deathFallDistance = 0.2 + Math.random() * 0.2; // 0.2 to 0.4 fall distance
+    
+    // Create randomized death color (pure red variations)
+    const redHue = 0; // Pure red (no hue variation)
+    const saturation = 0.9 + Math.random() * 0.1; // 0.9 to 1.0 saturation (very saturated)
+    const lightness = 0.25 + Math.random() * 0.35; // 0.25 to 0.6 lightness (darker to brighter red)
+    this.deathMaterial.color.setHSL(redHue, saturation, lightness);
   }
   
   public isDeathAnimationComplete(): boolean {
-    return this.isDying && (Date.now() - this.deathStartTime) >= 500;
+    return this.isDying && (Date.now() - this.deathStartTime) >= this.deathDuration;
   }
   
   public getPosition(): THREE.Vector3 {
