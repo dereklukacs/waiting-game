@@ -26,6 +26,7 @@ const App = observer(() => {
   const [score, setScore] = useState<number>(0);
   const [liveLeaderboard, setLiveLeaderboard] = useState<Array<{username: string, score: number}>>([]);
   const [allTimeLeaderboard, setAllTimeLeaderboard] = useState<Array<{username: string, score: number}>>([]);
+  const [gameStartTime, setGameStartTime] = useState<number>(Date.now());
 
   // Get server port from URL params (default to 3001)
   const urlParams = new URLSearchParams(window.location.search);
@@ -137,6 +138,9 @@ const App = observer(() => {
 
   useEffect(() => {
     if (!mountRef.current) return;
+
+    // Initialize game start time
+    setGameStartTime(Date.now());
 
     // Clear any existing content
     mountRef.current.innerHTML = "";
@@ -502,9 +506,14 @@ const App = observer(() => {
         }
       }
 
-      // Spawn zombies randomly ahead of the camera
-      if (CONFIG.RNG.shouldSpawnZombie()) {
-        const newZombie = new Zombie();
+      // Spawn zombies with increasing difficulty over time
+      const gameTimeMinutes = (Date.now() - gameStartTime) / (1000 * 60);
+      const spawnRateMultiplier = 1 + (gameTimeMinutes * CONFIG.ZOMBIE_SPAWN_RATE_INCREASE);
+      const currentSpawnRate = CONFIG.ZOMBIE_SPAWN_RATE * spawnRateMultiplier;
+      const zombieHealth = Math.max(1, Math.floor(CONFIG.ZOMBIE_BASE_HEALTH + (gameTimeMinutes * CONFIG.ZOMBIE_HEALTH_INCREASE_RATE)));
+      
+      if (Math.random() < currentSpawnRate) {
+        const newZombie = new Zombie(zombieHealth);
         newZombie.setPosition(
           CONFIG.RNG.zombieSpawnX(),
           -1,
@@ -636,27 +645,33 @@ const App = observer(() => {
             .distanceTo(zombie.getPosition());
 
           if (bulletDistance < CONFIG.BULLET_DAMAGE_DISTANCE) {
-            // Bullet hit zombie - remove both and increment score
-            console.log(`Zombie hit! Distance: ${bulletDistance.toFixed(2)}`);
+            // Bullet hit zombie - damage it
+            console.log(`Zombie hit! Distance: ${bulletDistance.toFixed(2)}, Health: ${zombie.health}`);
             scene.remove(bullet.mesh);
             bullet.dispose();
             bullets.splice(k, 1);
 
-            scene.remove(zombie.group);
-            zombie.dispose();
-            zombies.splice(i, 1);
+            // Damage the zombie
+            const zombieDied = zombie.takeDamage(1);
             
-            // Increment score for killing a zombie
-            setScore(prevScore => {
-              const newScore = prevScore + 1;
-              // Send score update to server
-              if (updateScore) {
-                updateScore(newScore);
-              }
-              return newScore;
-            });
-            
-            zombieHit = true;
+            if (zombieDied) {
+              // Zombie died - remove it and increment score
+              scene.remove(zombie.group);
+              zombie.dispose();
+              zombies.splice(i, 1);
+              
+              // Increment score for killing a zombie
+              setScore(prevScore => {
+                const newScore = prevScore + 1;
+                // Send score update to server
+                if (updateScore) {
+                  updateScore(newScore);
+                }
+                return newScore;
+              });
+              
+              zombieHit = true;
+            }
             break;
           }
         }
@@ -1031,8 +1046,9 @@ const App = observer(() => {
       // Clear triggered pairs
       triggeredPairs.clear();
       
-      // Reset score
+      // Reset score and game time
       setScore(0);
+      setGameStartTime(Date.now());
       
       // Send reset score to server
       if (updateScore) {

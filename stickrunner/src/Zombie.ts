@@ -8,8 +8,12 @@ export class Zombie {
   public leftArm: THREE.Mesh;
   public rightArm: THREE.Mesh;
   private animationTime: number = 0;
+  public health: number;
+  public maxHealth: number;
 
-  constructor() {
+  constructor(health: number = CONFIG.ZOMBIE_BASE_HEALTH) {
+    this.health = health;
+    this.maxHealth = health;
     this.group = new THREE.Group();
     
     // Zombie color variations for more menacing look
@@ -116,6 +120,27 @@ export class Zombie {
   
   public getPosition(): THREE.Vector3 {
     return this.group.position.clone();
+  }
+  
+  public takeDamage(damage: number = 1): boolean {
+    this.health -= damage;
+    
+    // Visual feedback - flash red when taking damage
+    this.group.traverse((child) => {
+      if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshLambertMaterial) {
+        const originalColor = child.material.color.clone();
+        child.material.color.setHex(0xff4444); // Flash red
+        setTimeout(() => {
+          child.material.color.copy(originalColor);
+        }, 100);
+      }
+    });
+    
+    return this.health <= 0; // Return true if zombie is dead
+  }
+  
+  public isDead(): boolean {
+    return this.health <= 0;
   }
   
   public dispose() {

@@ -110,8 +110,13 @@ let's make the obstacles 40% bigger, about 80% the width of one lane of the road
 fix the ui of the name field while editing, make the text white so theres enough contrast
 
 Let's add a score bsaed on number of zombies killed
-========= UNFINISHED TASKS BELOW THIS LINE =======
 
 Let's add a live leaderboard that is syncrhonized to the backend (how about every 500 ms?) that shows up to the top 5 scores from active players.
 
 Let's have a second leaderboard that shows all time high scores
+
+========= UNFINISHED TASKS BELOW THIS LINE =======
+
+let's make the zombies increase in number over time, let's also have their health increase
+
+let's make it so that control of the mob is just done with mouse move, not drag. And make clicking the shooting action instead of auto shoot

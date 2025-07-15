@@ -24,9 +24,12 @@ export const CONFIG = {
   // Zombie Properties
   ZOMBIE_SPEED: 0.08, // Slightly slower than camera speed
   ZOMBIE_SPAWN_DISTANCE: -50, // How far ahead zombies spawn
-  ZOMBIE_SPAWN_RATE: 0.02, // Probability per frame of spawning a zombie
+  ZOMBIE_SPAWN_RATE: 0.02, // Base probability per frame of spawning a zombie
   ZOMBIE_COLLISION_DISTANCE: 0.5, // How close zombies need to be to "catch" stick people
   ZOMBIE_CLEANUP_DISTANCE: 15, // Remove zombies this far behind camera
+  ZOMBIE_BASE_HEALTH: 1, // Starting health for zombies
+  ZOMBIE_HEALTH_INCREASE_RATE: 0.1, // Health increase per minute of gameplay
+  ZOMBIE_SPAWN_RATE_INCREASE: 0.3, // Spawn rate multiplier increase per minute
 
   // Bullet Properties
   BULLET_SPEED: 0.3, // Forward speed of bullets
