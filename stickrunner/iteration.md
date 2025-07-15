@@ -127,6 +127,20 @@ let's go back to dragging for controlling the movement and having autoshoot
 
 the game difficulty needs to reset when the game resets, not based on the amount of time one page
 
-========= UNFINISHED TASKS BELOW THIS LINE =======
-
 The game speed is inconsistent across devices. We need to unify it so it matches clock speed, not just frame rate
+
+let's have the difficulty get harder linearly instead of step change
+
+can you make the game speed over time too
+
+a minute is too long of a time period for a progression, let's make it every 20 seconds
+
+let's have a central "level" that sets the overall difficulty
+
+Let's have the "claude idle" screen say the current score and say something like "Claude code is done working, to play for longer give it a better prompt" then instead of pausing, on pressing play again it triggers a restart
+
+let's keep the force play button, but only for localhost / dev
+
+let's add a death animation to the stick figures, let's have them turn red and fall over in 500 ms
+========= UNFINISHED TASKS BELOW THIS LINE =======
+can you add some randomness to the death animation? different hues and timing and fall angles?

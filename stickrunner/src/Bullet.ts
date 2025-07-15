@@ -15,9 +15,10 @@ export class Bullet {
     this.startZ = startPosition.z;
   }
 
-  public update(): boolean {
-    // Move bullet forward
-    this.mesh.position.z -= CONFIG.BULLET_SPEED;
+  public update(deltaTime: number = 1/60, speedMultiplier: number = 1): boolean {
+    // Move bullet forward (delta time based with speed multiplier)
+    const bulletSpeed = CONFIG.BULLET_SPEED * 60 * deltaTime * speedMultiplier;
+    this.mesh.position.z -= bulletSpeed;
     
     // Check if bullet has traveled too far
     const distanceTraveled = Math.abs(this.mesh.position.z - this.startZ);

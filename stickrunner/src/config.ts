@@ -4,6 +4,8 @@ export const CONFIG = {
   CAMERA_SPEED: 0.12,
   MAGNETIC_POINT_MAX_SPEED: 0.18,
   ROAD_BOUNDS: 2.5,
+  SPEED_INCREASE_RATE: 0.2, // Speed multiplier increase per 20 seconds (20% faster each 20 seconds)
+  MAX_SPEED_MULTIPLIER: 4.0, // Maximum speed multiplier (3x original speed)
 
   // Character Properties
   CUBE_SIZE: 0.4, // Smaller hitbox for stick people to reduce spreading
@@ -24,12 +26,12 @@ export const CONFIG = {
   // Zombie Properties
   ZOMBIE_SPEED: 0.08, // Slightly slower than camera speed
   ZOMBIE_SPAWN_DISTANCE: -50, // How far ahead zombies spawn
-  ZOMBIE_SPAWN_RATE: 0.02, // Base probability per frame of spawning a zombie (lower start)
+  ZOMBIE_SPAWN_RATE: 0.015, // Base probability per frame of spawning a zombie (easier start)
   ZOMBIE_COLLISION_DISTANCE: 0.5, // How close zombies need to be to "catch" stick people
   ZOMBIE_CLEANUP_DISTANCE: 15, // Remove zombies this far behind camera
   ZOMBIE_BASE_HEALTH: 1, // Starting health for zombies
-  ZOMBIE_HEALTH_INCREASE_RATE: 0.1, // Health increase per minute of gameplay
-  ZOMBIE_SPAWN_RATE_INCREASE: 3.0, // Spawn rate multiplier increase per minute (MUCH STEEPER ramp)
+  ZOMBIE_HEALTH_INCREASE_RATE: 0.6, // Health increase per 20 seconds of gameplay (much faster)
+  ZOMBIE_SPAWN_RATE_INCREASE: 5.0, // Spawn rate multiplier increase per 20 seconds (MUCH STEEPER ramp)
 
   // Bullet Properties
   BULLET_SPEED: 0.3, // Forward speed of bullets

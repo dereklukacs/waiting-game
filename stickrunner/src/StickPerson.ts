@@ -16,6 +16,10 @@ export class StickPerson {
   private jumpTime: number = 0;
   private jumpCooldown: number = 0;
   private isJumping: boolean = false;
+  public isDying: boolean = false;
+  private deathStartTime: number = 0;
+  private originalMaterials: THREE.Material[] = [];
+  private deathMaterial: THREE.MeshLambertMaterial;
 
   constructor() {
     this.group = new THREE.Group();
@@ -39,12 +43,19 @@ export class StickPerson {
       color: personColor.clone().multiplyScalar(0.9) // Slightly darker limbs
     });
     
+    // Create death material (red)
+    this.deathMaterial = new THREE.MeshLambertMaterial({ 
+      color: 0xff0000,
+      transparent: false
+    });
+    
     // Head (more detailed sphere)
     const headGeometry = new THREE.SphereGeometry(0.15 * sizeScale, 12, 8);
     const head = new THREE.Mesh(headGeometry, bodyMaterial);
     head.position.set(0, 0.6 * sizeScale, 0);
     head.castShadow = true;
     this.group.add(head);
+    this.originalMaterials.push(bodyMaterial);
     
     // Body (more detailed cylinder with slight taper)
     const bodyGeometry = new THREE.CylinderGeometry(0.08 * sizeScale, 0.1 * sizeScale, 0.6 * sizeScale, 12);
@@ -52,6 +63,7 @@ export class StickPerson {
     body.position.set(0, 0.1 * sizeScale, 0);
     body.castShadow = true;
     this.group.add(body);
+    this.originalMaterials.push(bodyMaterial);
     
     // Arms (more detailed with slight taper)
     const armGeometry = new THREE.CylinderGeometry(0.025 * sizeScale, 0.035 * sizeScale, 0.4 * sizeScale, 8);
@@ -60,11 +72,13 @@ export class StickPerson {
     this.leftArm.position.set(-0.15 * sizeScale, 0.25 * sizeScale, 0);
     this.leftArm.castShadow = true;
     this.group.add(this.leftArm);
+    this.originalMaterials.push(limbMaterial);
     
     this.rightArm = new THREE.Mesh(armGeometry, limbMaterial);
     this.rightArm.position.set(0.15 * sizeScale, 0.25 * sizeScale, 0);
     this.rightArm.castShadow = true;
     this.group.add(this.rightArm);
+    this.originalMaterials.push(limbMaterial);
     
     // Legs (more detailed with slight taper)
     const legGeometry = new THREE.CylinderGeometry(0.03 * sizeScale, 0.05 * sizeScale, 0.5 * sizeScale, 8);
@@ -73,11 +87,13 @@ export class StickPerson {
     this.leftLeg.position.set(-0.08 * sizeScale, -0.45 * sizeScale, 0);
     this.leftLeg.castShadow = true;
     this.group.add(this.leftLeg);
+    this.originalMaterials.push(limbMaterial);
     
     this.rightLeg = new THREE.Mesh(legGeometry, limbMaterial);
     this.rightLeg.position.set(0.08 * sizeScale, -0.45 * sizeScale, 0);
     this.rightLeg.castShadow = true;
     this.group.add(this.rightLeg);
+    this.originalMaterials.push(limbMaterial);
     
     // Add simple feet for better ground contact visual
     const footGeometry = new THREE.BoxGeometry(0.12 * sizeScale, 0.04 * sizeScale, 0.08 * sizeScale);
@@ -87,30 +103,59 @@ export class StickPerson {
     leftFoot.position.set(-0.08 * sizeScale, -0.72 * sizeScale, 0.02 * sizeScale);
     leftFoot.castShadow = true;
     this.group.add(leftFoot);
+    this.originalMaterials.push(footMaterial);
     
     const rightFoot = new THREE.Mesh(footGeometry, footMaterial);
     rightFoot.position.set(0.08 * sizeScale, -0.72 * sizeScale, 0.02 * sizeScale);
     rightFoot.castShadow = true;
     this.group.add(rightFoot);
+    this.originalMaterials.push(footMaterial);
     
     // Set initial position
     this.group.position.y = CONFIG.STICK_PERSON_GROUND_Y; // Position on road surface
   }
   
   public animate(deltaTime: number) {
-    // Update shoot cooldown
+    // Update shoot cooldown (delta time based)
     if (this.shootCooldown > 0) {
-      this.shootCooldown--;
+      this.shootCooldown -= deltaTime * 60; // Convert to per-second cooldown
     }
     
-    // Update jump cooldown
+    // Update jump cooldown (delta time based)
     if (this.jumpCooldown > 0) {
-      this.jumpCooldown--;
+      this.jumpCooldown -= deltaTime * 60; // Convert to per-second cooldown
     }
     
     // Manual jumping only - no auto-jump
     
-    if (this.isFalling) {
+    if (this.isDying) {
+      // Death animation - turn red and fall over in 500ms
+      const deathProgress = Math.min((Date.now() - this.deathStartTime) / 500, 1); // 500ms duration
+      
+      // Change color to red progressively
+      let materialIndex = 0;
+      this.group.traverse((child) => {
+        if (child instanceof THREE.Mesh && child.material) {
+          const originalMaterial = this.originalMaterials[materialIndex];
+          if (originalMaterial) {
+            (child.material as THREE.MeshLambertMaterial).color.lerpColors(
+              (originalMaterial as THREE.MeshLambertMaterial).color,
+              this.deathMaterial.color,
+              deathProgress
+            );
+            materialIndex++;
+          }
+        }
+      });
+      
+      // Fall over - rotate the entire group
+      this.group.rotation.z = deathProgress * Math.PI * 0.5; // 90 degrees
+      
+      // Fall down slightly
+      this.group.position.y = CONFIG.STICK_PERSON_GROUND_Y - (deathProgress * 0.3);
+      
+      return; // Don't do other animations while dying
+    } else if (this.isFalling) {
       // Falling animation
       this.fallVelocity += 0.01; // Gravity acceleration
       this.group.position.y -= this.fallVelocity;
@@ -221,6 +266,15 @@ export class StickPerson {
     this.fallRotationVelocity = (Math.random() - 0.5) * 0.1; // Random initial rotation
   }
   
+  public startDying() {
+    this.isDying = true;
+    this.deathStartTime = Date.now();
+  }
+  
+  public isDeathAnimationComplete(): boolean {
+    return this.isDying && (Date.now() - this.deathStartTime) >= 500;
+  }
+  
   public getPosition(): THREE.Vector3 {
     return this.group.position.clone();
   }
@@ -233,6 +287,18 @@ export class StickPerson {
         if (child.material instanceof THREE.Material) {
           child.material.dispose();
         }
+      }
+    });
+    
+    // Clean up death material
+    if (this.deathMaterial) {
+      this.deathMaterial.dispose();
+    }
+    
+    // Clean up original materials
+    this.originalMaterials.forEach(material => {
+      if (material) {
+        material.dispose();
       }
     });
   }

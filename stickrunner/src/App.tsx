@@ -27,6 +27,7 @@ const App = observer(() => {
   const [liveLeaderboard, setLiveLeaderboard] = useState<Array<{username: string, score: number}>>([]);
   const [allTimeLeaderboard, setAllTimeLeaderboard] = useState<Array<{username: string, score: number}>>([]);
   const [gameStartTime, setGameStartTime] = useState<number>(0);
+  const [currentLevel, setCurrentLevel] = useState<number>(1);
 
   // Get server port from URL params (default to 3001)
   const urlParams = new URLSearchParams(window.location.search);
@@ -280,6 +281,7 @@ const App = observer(() => {
     // Mob system with velocity tracking
     const cubes: THREE.Mesh[] = [cube]; // Start with the main cube (collision box)
     const stickPeople: StickPerson[] = [firstStickPerson]; // Visual stick people
+    const dyingStickPeople: StickPerson[] = []; // Stick people playing death animations
     const cubeVelocities: THREE.Vector3[] = [new THREE.Vector3(0, 0, 0)]; // Velocity for each cube
     let currentMobCount = 1;
 
@@ -450,8 +452,9 @@ const App = observer(() => {
     let animationId: number;
     let gameRunning = true;
     let gamePaused = false;
-    let gameTimeFrames = 0; // Track game time in frames
-    const animate = () => {
+    let gameTimeSeconds = 0; // Track game time in seconds
+    let lastFrameTime = performance.now();
+    const animate = (currentTime: number = performance.now()) => {
       if (!gameRunning) return; // Stop animation if game over
 
       // Check if game should be paused based on Claude status (use ref for current value)
@@ -462,18 +465,36 @@ const App = observer(() => {
           claudeStatusRef.current?.state === "waiting-permission");
 
       if (gamePaused) {
-        // If paused, keep checking for unpause
+        // If paused, keep checking for unpause but don't update lastFrameTime
         setTimeout(() => animate(), 100);
         return;
       }
 
+      // Calculate delta time for consistent speed across devices
+      const deltaTime = (currentTime - lastFrameTime) / 1000; // Convert to seconds
+      lastFrameTime = currentTime;
+      gameTimeSeconds += deltaTime;
+
       animationId = requestAnimationFrame(animate);
 
-      // Increment game time (assuming 60fps)
-      gameTimeFrames++;
+      // Calculate current level based on game time (20 second intervals)
+      const gameTime20Seconds = gameTimeSeconds / 20;
+      const newLevel = Math.floor(gameTime20Seconds) + 1;
+      
+      // Update level if it changed
+      if (newLevel !== currentLevel) {
+        setCurrentLevel(newLevel);
+      }
+      
+      // Calculate speed multiplier based on level
+      const speedMultiplier = Math.min(
+        1 + ((newLevel - 1) * CONFIG.SPEED_INCREASE_RATE),
+        CONFIG.MAX_SPEED_MULTIPLIER
+      );
 
-      // Move camera forward along the road
-      camera.position.z -= CONFIG.CAMERA_SPEED;
+      // Move camera forward along the road (delta time based with speed multiplier)
+      const cameraSpeed = CONFIG.CAMERA_SPEED * 60 * deltaTime * speedMultiplier;
+      camera.position.z -= cameraSpeed;
       camera.lookAt(
         0,
         0,
@@ -481,11 +502,12 @@ const App = observer(() => {
       );
 
       // Update magnetic point position
-      magnetPoint.z -= CONFIG.CAMERA_SPEED; // Move forward with camera
+      magnetPoint.z -= cameraSpeed; // Move forward with camera
 
-      // Smooth magnetic point movement based on mouse input
+      // Smooth magnetic point movement based on mouse input (delta time based)
       const deltaX = targetX - magnetPoint.x;
-      const moveStep = Math.sign(deltaX) * Math.min(Math.abs(deltaX), maxSpeed);
+      const moveSpeed = maxSpeed * 60 * deltaTime; // Convert to per-second speed
+      const moveStep = Math.sign(deltaX) * Math.min(Math.abs(deltaX), moveSpeed);
       magnetPoint.x += moveStep;
 
       // Generate new gate pairs ahead with consistent spacing
@@ -510,11 +532,19 @@ const App = observer(() => {
         }
       }
 
-      // Spawn zombies with increasing difficulty over time
-      const gameTimeMinutes = gameTimeFrames / (60 * 60); // Convert frames to minutes (assuming 60fps)
-      const spawnRateMultiplier = 1 + (gameTimeMinutes * CONFIG.ZOMBIE_SPAWN_RATE_INCREASE);
+      // Spawn zombies with increasing difficulty based on level
+      const spawnRateMultiplier = 1 + ((newLevel - 1) * CONFIG.ZOMBIE_SPAWN_RATE_INCREASE);
       const currentSpawnRate = CONFIG.ZOMBIE_SPAWN_RATE * spawnRateMultiplier;
-      const zombieHealth = Math.max(1, Math.floor(CONFIG.ZOMBIE_BASE_HEALTH + (gameTimeMinutes * CONFIG.ZOMBIE_HEALTH_INCREASE_RATE)));
+      
+      // Linear health progression: mix of different health levels for smooth difficulty
+      const baseHealthFloat = CONFIG.ZOMBIE_BASE_HEALTH + ((newLevel - 1) * CONFIG.ZOMBIE_HEALTH_INCREASE_RATE);
+      const baseHealthInt = Math.floor(baseHealthFloat);
+      const healthFraction = baseHealthFloat - baseHealthInt;
+      
+      // Probabilistically choose between current and next health level for smooth progression
+      const zombieHealth = Math.max(1, 
+        Math.random() < healthFraction ? baseHealthInt + 1 : baseHealthInt
+      );
       
       if (Math.random() < currentSpawnRate) {
         const newZombie = new Zombie(zombieHealth);
@@ -595,16 +625,16 @@ const App = observer(() => {
                 testCube.geometry.dispose();
                 (testCube.material as THREE.Material).dispose();
 
-                // Remove corresponding stick person
+                // Trigger death animation for corresponding stick person
                 const stickPerson = stickPeople[cubeIndex];
-                if (stickPerson) {
-                  scene.remove(stickPerson.group);
-                  stickPerson.dispose();
-                  stickPeople.splice(cubeIndex, 1);
+                if (stickPerson && !stickPerson.isDying) {
+                  stickPerson.startDying();
+                  dyingStickPeople.push(stickPerson);
                 }
 
                 cubes.splice(cubeIndex, 1);
                 cubeVelocities.splice(cubeIndex, 1);
+                stickPeople.splice(cubeIndex, 1);
                 setMobCount(currentMobCount);
 
                 // Check for game over
@@ -634,11 +664,12 @@ const App = observer(() => {
       for (let i = zombies.length - 1; i >= 0; i--) {
         const zombie = zombies[i];
 
-        // Animate zombie
-        zombie.animate(0.016);
+        // Animate zombie (faster with speed multiplier)
+        zombie.animate(deltaTime * speedMultiplier);
 
-        // Move zombie toward camera (but slower than camera speed)
-        zombie.group.position.z += CONFIG.ZOMBIE_SPEED;
+        // Move zombie toward camera (but slower than camera speed) with speed multiplier
+        const zombieSpeed = CONFIG.ZOMBIE_SPEED * 60 * deltaTime * speedMultiplier;
+        zombie.group.position.z += zombieSpeed;
 
         // Check bullet collisions with this zombie
         let zombieHit = false;
@@ -694,10 +725,11 @@ const App = observer(() => {
             // Zombie caught a stick person - remove both the stick person and cube
             currentMobCount--;
 
-            // Remove stick person
-            scene.remove(stickPerson.group);
-            stickPerson.dispose();
-            stickPeople.splice(j, 1);
+            // Trigger death animation for stick person
+            if (!stickPerson.isDying) {
+              stickPerson.startDying();
+              dyingStickPeople.push(stickPerson);
+            }
 
             // Remove corresponding cube
             const correspondingCube = cubes[j];
@@ -708,6 +740,9 @@ const App = observer(() => {
               cubes.splice(j, 1);
               cubeVelocities.splice(j, 1);
             }
+            
+            // Remove stick person from array
+            stickPeople.splice(j, 1);
 
             setMobCount(currentMobCount);
 
@@ -744,10 +779,11 @@ const App = observer(() => {
             // Obstacle hit stick person - remove the stick person
             currentMobCount--;
 
-            // Remove stick person
-            scene.remove(stickPerson.group);
-            stickPerson.dispose();
-            stickPeople.splice(j, 1);
+            // Trigger death animation for stick person
+            if (!stickPerson.isDying) {
+              stickPerson.startDying();
+              dyingStickPeople.push(stickPerson);
+            }
 
             // Remove corresponding cube
             const correspondingCube = cubes[j];
@@ -758,6 +794,9 @@ const App = observer(() => {
               cubes.splice(j, 1);
               cubeVelocities.splice(j, 1);
             }
+            
+            // Remove stick person from array
+            stickPeople.splice(j, 1);
 
             setMobCount(currentMobCount);
 
@@ -787,7 +826,7 @@ const App = observer(() => {
         const bullet = bullets[i];
 
         // Update bullet position and check if it should be removed
-        const stillActive = bullet.update();
+        const stillActive = bullet.update(deltaTime, speedMultiplier);
 
         if (!stillActive) {
           // Remove bullet that has traveled too far
@@ -803,7 +842,7 @@ const App = observer(() => {
         // Update corresponding stick person animation
         const stickPerson = stickPeople[index];
         if (stickPerson) {
-          stickPerson.animate(0.016); // Assuming ~60fps
+          stickPerson.animate(deltaTime * speedMultiplier);
 
           // Handle shooting (auto-shoot)
           if (stickPerson.canShoot()) {
@@ -831,10 +870,11 @@ const App = observer(() => {
           ) {
             currentMobCount--;
 
-            // Remove stick person
-            scene.remove(stickPerson.group);
-            stickPerson.dispose();
-            stickPeople.splice(index, 1);
+            // Trigger death animation for stick person
+            if (!stickPerson.isDying) {
+              stickPerson.startDying();
+              dyingStickPeople.push(stickPerson);
+            }
 
             // Remove corresponding cube
             scene.remove(mobCube);
@@ -842,6 +882,9 @@ const App = observer(() => {
             (mobCube.material as THREE.Material).dispose();
             cubes.splice(index, 1);
             cubeVelocities.splice(index, 1);
+            
+            // Remove stick person from array
+            stickPeople.splice(index, 1);
 
             setMobCount(currentMobCount);
 
@@ -861,7 +904,7 @@ const App = observer(() => {
         }
 
         // Move forward with camera
-        mobCube.position.z -= CONFIG.CAMERA_SPEED;
+        mobCube.position.z -= cameraSpeed;
 
         // Get this cube's velocity
         const velocity = cubeVelocities[index];
@@ -911,12 +954,13 @@ const App = observer(() => {
           }
         });
 
-        // Apply forces to velocity (not position)
-        velocity.x += forceX;
-        velocity.z += forceZ;
+        // Apply forces to velocity (not position) - delta time based
+        const deltaTimePhysics = deltaTime * 60; // Convert to consistent physics timestep
+        velocity.x += forceX * deltaTimePhysics;
+        velocity.z += forceZ * deltaTimePhysics;
 
         // Apply damping to prevent oscillations
-        const damping = CONFIG.VELOCITY_DAMPING;
+        const damping = Math.pow(CONFIG.VELOCITY_DAMPING, deltaTime * 60);
         velocity.x *= damping;
         velocity.z *= damping;
 
@@ -930,9 +974,9 @@ const App = observer(() => {
           velocity.z = (velocity.z / currentSpeed) * maxSpeed;
         }
 
-        // Apply velocity to position
-        mobCube.position.x += velocity.x;
-        mobCube.position.z += velocity.z;
+        // Apply velocity to position (delta time based)
+        mobCube.position.x += velocity.x * deltaTimePhysics;
+        mobCube.position.z += velocity.z * deltaTimePhysics;
 
         // Sync stick person position with collision box (only if not falling)
         if (stickPerson && !stickPerson.isFalling) {
@@ -964,6 +1008,21 @@ const App = observer(() => {
 
         // Keep cubes on the road surface
         mobCube.position.y = CONFIG.STICK_PERSON_GROUND_Y;
+      }
+
+      // Animate dying stick people and clean up completed death animations
+      for (let i = dyingStickPeople.length - 1; i >= 0; i--) {
+        const stickPerson = dyingStickPeople[i];
+        if (stickPerson) {
+          stickPerson.animate(deltaTime);
+          
+          // Remove if death animation is complete
+          if (stickPerson.isDeathAnimationComplete()) {
+            scene.remove(stickPerson.group);
+            stickPerson.dispose();
+            dyingStickPeople.splice(i, 1);
+          }
+        }
       }
 
       renderer.render(scene, camera);
@@ -1023,6 +1082,15 @@ const App = observer(() => {
         }
       }
 
+      // Clear all dying stick people
+      while (dyingStickPeople.length > 0) {
+        const removedStickPerson = dyingStickPeople.pop();
+        if (removedStickPerson) {
+          scene.remove(removedStickPerson.group);
+          removedStickPerson.dispose();
+        }
+      }
+
       // Recreate the first cube (invisible collision box)
       const newCube = new THREE.Mesh(geometry, material);
       newCube.visible = false;
@@ -1050,10 +1118,12 @@ const App = observer(() => {
       // Clear triggered pairs
       triggeredPairs.clear();
       
-      // Reset score and game time
+      // Reset score, level, and game time
       setScore(0);
+      setCurrentLevel(1);
       setGameStartTime(0);
-      gameTimeFrames = 0;
+      gameTimeSeconds = 0;
+      lastFrameTime = performance.now();
       
       // Send reset score to server
       if (updateScore) {
@@ -1136,6 +1206,7 @@ const App = observer(() => {
         )}
         <div className="text-xl font-bold">Challengers: {mobCount}</div>
         <div className="text-lg font-semibold text-yellow-400">Score: {score}</div>
+        <div className="text-md font-medium text-blue-400">Level: {currentLevel}</div>
       </div>
 
       {/* Status Display */}
@@ -1252,10 +1323,13 @@ const App = observer(() => {
               {claudeStatus?.state === "idle" ? (
                 <>
                   <h2 className="text-2xl font-bold text-green-600 mb-2">
-                    Game Paused
+                    Game Complete!
                   </h2>
+                  <p className="text-gray-700 mb-2">
+                    <strong>Final Score: {score}</strong>
+                  </p>
                   <p className="text-gray-700 mb-4">
-                    Claude is idle - ask Claude something to resume!
+                    Claude Code is done working. To play for longer, give it a better prompt!
                   </p>
                 </>
               ) : (
@@ -1268,12 +1342,22 @@ const App = observer(() => {
                   </p>
                 </>
               )}
-              <button
-                onClick={() => setForceStarted(true)}
-                className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded transition-colors"
-              >
-                Force Start Game
-              </button>
+              <div className="space-y-3">
+                <button
+                  onClick={() => (window as any).restartGame?.()}
+                  className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition-colors"
+                >
+                  Play Again
+                </button>
+                {window.location.hostname === 'localhost' && (
+                  <button
+                    onClick={() => setForceStarted(true)}
+                    className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded transition-colors"
+                  >
+                    Force Start Game
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         )}
