@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from "react";
 
 interface MultiplayerMessage {
   type: string;
@@ -43,26 +43,28 @@ export const useMultiplayerConnection = ({
 }: UseMultiplayerConnectionProps) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isRegistered, setIsRegistered] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'registered'>('disconnected');
+  const [connectionStatus, setConnectionStatus] = useState<
+    "disconnected" | "connecting" | "connected" | "registered"
+  >("disconnected");
   const ws = useRef<WebSocket | null>(null);
-  const reconnectTimeout = useRef<NodeJS.Timeout | null>(null);
+  const reconnectTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const connect = useCallback(() => {
     if (ws.current?.readyState === WebSocket.OPEN) {
       return;
     }
 
-    setConnectionStatus('connecting');
-    
+    setConnectionStatus("connecting");
+
     try {
       ws.current = new WebSocket(serverUrl);
 
       ws.current.onopen = () => {
-        console.log('WebSocket connected');
+        console.log("WebSocket connected");
         setIsConnected(true);
-        setConnectionStatus('connected');
+        setConnectionStatus("connected");
         onConnected?.();
-        
+
         // Auto-register with username and deviceId if provided
         if (username && deviceId) {
           register(username, deviceId);
@@ -74,15 +76,15 @@ export const useMultiplayerConnection = ({
           const message: MultiplayerMessage = JSON.parse(event.data);
           handleMessage(message);
         } catch (error) {
-          console.error('Failed to parse WebSocket message:', error);
+          console.error("Failed to parse WebSocket message:", error);
         }
       };
 
       ws.current.onclose = (event) => {
-        console.log('WebSocket disconnected:', event.code, event.reason);
+        console.log("WebSocket disconnected:", event.code, event.reason);
         setIsConnected(false);
         setIsRegistered(false);
-        setConnectionStatus('disconnected');
+        setConnectionStatus("disconnected");
         onDisconnected?.();
 
         // Auto-reconnect after 3 seconds if not intentionally closed
@@ -94,14 +96,13 @@ export const useMultiplayerConnection = ({
       };
 
       ws.current.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        onError?.('Connection error');
+        console.error("WebSocket error:", error);
+        onError?.("Connection error");
       };
-
     } catch (error) {
-      console.error('Failed to create WebSocket connection:', error);
-      setConnectionStatus('disconnected');
-      onError?.('Failed to connect');
+      console.error("Failed to create WebSocket connection:", error);
+      setConnectionStatus("disconnected");
+      onError?.("Failed to connect");
     }
   }, [serverUrl, username, onConnected, onDisconnected, onError]);
 
@@ -112,7 +113,7 @@ export const useMultiplayerConnection = ({
     }
 
     if (ws.current) {
-      ws.current.close(1000, 'Intentional disconnect');
+      ws.current.close(1000, "Intentional disconnect");
       ws.current = null;
     }
   }, []);
@@ -121,47 +122,53 @@ export const useMultiplayerConnection = ({
     if (ws.current?.readyState === WebSocket.OPEN) {
       ws.current.send(JSON.stringify(message));
     } else {
-      console.warn('WebSocket not connected, cannot send message');
+      console.warn("WebSocket not connected, cannot send message");
     }
   }, []);
 
-  const register = useCallback((usernameToRegister: string, deviceIdToRegister: string) => {
-    const registerMessage: MultiplayerMessage = {
-      type: 'register',
-      data: {
-        username: usernameToRegister,
-        deviceId: deviceIdToRegister,
-      } as RegisterData,
-    };
-    sendMessage(registerMessage);
-  }, [sendMessage]);
+  const register = useCallback(
+    (usernameToRegister: string, deviceIdToRegister: string) => {
+      const registerMessage: MultiplayerMessage = {
+        type: "register",
+        data: {
+          username: usernameToRegister,
+          deviceId: deviceIdToRegister,
+        } as RegisterData,
+      };
+      sendMessage(registerMessage);
+    },
+    [sendMessage]
+  );
 
-  const handleMessage = useCallback((message: MultiplayerMessage) => {
-    switch (message.type) {
-      case 'response':
-        const responseData = message.data as ResponseData;
-        console.log('Registration successful:', responseData.message);
-        setIsRegistered(true);
-        setConnectionStatus('registered');
-        onRegistered?.(responseData);
-        break;
+  const handleMessage = useCallback(
+    (message: MultiplayerMessage) => {
+      switch (message.type) {
+        case "response":
+          const responseData = message.data as ResponseData;
+          console.log("Registration successful:", responseData.message);
+          setIsRegistered(true);
+          setConnectionStatus("registered");
+          onRegistered?.(responseData);
+          break;
 
-      case 'player_count':
-        const playerCountData = message.data as PlayerCountData;
-        console.log('Player count update:', playerCountData.count);
-        onPlayerCountUpdate?.(playerCountData.count);
-        break;
+        case "player_count":
+          const playerCountData = message.data as PlayerCountData;
+          console.log("Player count update:", playerCountData.count);
+          onPlayerCountUpdate?.(playerCountData.count);
+          break;
 
-      case 'error':
-        const errorMessage = message.data?.message || 'Unknown error';
-        console.error('Server error:', errorMessage);
-        onError?.(errorMessage);
-        break;
+        case "error":
+          const errorMessage = message.data?.message || "Unknown error";
+          console.error("Server error:", errorMessage);
+          onError?.(errorMessage);
+          break;
 
-      default:
-        console.log('Unknown message type:', message.type);
-    }
-  }, [onRegistered, onPlayerCountUpdate, onError]);
+        default:
+          console.log("Unknown message type:", message.type);
+      }
+    },
+    [onRegistered, onPlayerCountUpdate, onError]
+  );
 
   // Connect on mount only when username and deviceId are available
   useEffect(() => {

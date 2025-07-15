@@ -104,6 +104,8 @@ let's deploy the backend using railway
 can you show the number of online players on the frontend
 
 let's use device id as the unique identifier for a player
-========= UNFINISHED TASKS BELOW THIS LINE =======
 
 let's make the obstacles 40% bigger, about 80% the width of one lane of the road
+
+========= UNFINISHED TASKS BELOW THIS LINE =======
+fix the frontend linter errors, our build is failing

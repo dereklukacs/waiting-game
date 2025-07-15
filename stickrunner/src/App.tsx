@@ -16,13 +16,13 @@ const App = observer(() => {
   const [gameOver, setGameOver] = useState(false);
   const [forceStarted, setForceStarted] = useState(false);
   const forceStartedRef = useRef(forceStarted);
-  const [username, setUsername] = useState<string>('');
+  const [username, setUsername] = useState<string>("");
   const [showUsernameModal, setShowUsernameModal] = useState(false);
-  const [usernameInput, setUsernameInput] = useState('');
+  const [usernameInput, setUsernameInput] = useState("");
   const [editingUsername, setEditingUsername] = useState(false);
-  const [multiplayerMessage, setMultiplayerMessage] = useState<string>('');
+  const [multiplayerMessage, setMultiplayerMessage] = useState<string>("");
   const [onlinePlayerCount, setOnlinePlayerCount] = useState<number>(0);
-  const [deviceId, setDeviceId] = useState<string>('');
+  const [deviceId, setDeviceId] = useState<string>("");
 
   // Get server port from URL params (default to 3001)
   const urlParams = new URLSearchParams(window.location.search);
@@ -37,29 +37,29 @@ const App = observer(() => {
   // Multiplayer connection - only connect when username is set
   const {
     isConnected: multiplayerConnected,
-    isRegistered: multiplayerRegistered,
+
     connectionStatus: multiplayerStatus,
   } = useMultiplayerConnection({
     serverUrl: import.meta.env.PROD
-      ? 'wss://your-app-name.up.railway.app/ws'  // Replace with your Railway URL
-      : 'ws://localhost:8080/ws',
-    username: username && username.trim() ? username : '', // Only pass username if it's valid
+      ? "wss://your-app-name.up.railway.app/ws" // Replace with your Railway URL
+      : "ws://localhost:8080/ws",
+    username: username && username.trim() ? username : "", // Only pass username if it's valid
     deviceId: deviceId, // Pass device ID for unique identification
     onConnected: () => {
-      console.log('Multiplayer connected');
+      console.log("Multiplayer connected");
     },
     onRegistered: (data) => {
-      console.log('Multiplayer registered:', data);
+      console.log("Multiplayer registered:", data);
       setMultiplayerMessage(data.message);
-      setTimeout(() => setMultiplayerMessage(''), 3000);
+      setTimeout(() => setMultiplayerMessage(""), 3000);
     },
     onPlayerCountUpdate: (count) => {
       setOnlinePlayerCount(count);
     },
     onError: (error) => {
-      console.error('Multiplayer error:', error);
+      console.error("Multiplayer error:", error);
       setMultiplayerMessage(`Error: ${error}`);
-      setTimeout(() => setMultiplayerMessage(''), 3000);
+      setTimeout(() => setMultiplayerMessage(""), 3000);
     },
   });
 
@@ -82,7 +82,7 @@ const App = observer(() => {
 
   // Check for existing username and device ID on mount
   useEffect(() => {
-    const savedUsername = localStorage.getItem('stickrunner-username');
+    const savedUsername = localStorage.getItem("stickrunner-username");
     if (savedUsername) {
       setUsername(savedUsername);
     } else {
@@ -90,10 +90,14 @@ const App = observer(() => {
     }
 
     // Generate or retrieve device ID
-    let savedDeviceId = localStorage.getItem('stickrunner-device-id');
+    let savedDeviceId = localStorage.getItem("stickrunner-device-id");
     if (!savedDeviceId) {
-      savedDeviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11);
-      localStorage.setItem('stickrunner-device-id', savedDeviceId);
+      savedDeviceId =
+        "device_" +
+        Date.now() +
+        "_" +
+        Math.random().toString(36).substring(2, 11);
+      localStorage.setItem("stickrunner-device-id", savedDeviceId);
     }
     setDeviceId(savedDeviceId);
   }, []);
@@ -104,10 +108,10 @@ const App = observer(() => {
     if (usernameInput.trim()) {
       const cleanUsername = usernameInput.trim();
       setUsername(cleanUsername);
-      localStorage.setItem('stickrunner-username', cleanUsername);
+      localStorage.setItem("stickrunner-username", cleanUsername);
       setShowUsernameModal(false);
       setEditingUsername(false);
-      setUsernameInput('');
+      setUsernameInput("");
     }
   };
 
@@ -118,10 +122,9 @@ const App = observer(() => {
   };
 
   const cancelEditingUsername = () => {
-    setUsernameInput('');
+    setUsernameInput("");
     setEditingUsername(false);
   };
-
 
   useEffect(() => {
     if (!mountRef.current) return;
@@ -1053,7 +1056,7 @@ const App = observer(() => {
               className="text-sm px-2 py-1 rounded text-black focus:outline-none focus:ring-1 focus:ring-blue-500"
               maxLength={20}
               autoFocus
-              onKeyDown={(e) => e.key === 'Escape' && cancelEditingUsername()}
+              onKeyDown={(e) => e.key === "Escape" && cancelEditingUsername()}
             />
             <button
               type="button"
@@ -1073,7 +1076,7 @@ const App = observer(() => {
             </button>
           </div>
         ) : (
-          <div 
+          <div
             className="flex items-center gap-1 text-sm font-semibold text-gray-300 cursor-pointer hover:text-white transition-colors mb-1"
             onClick={startEditingUsername}
             title="Click to edit username"
@@ -1133,15 +1136,19 @@ const App = observer(() => {
               <WifiOff size={14} className="text-red-400" />
             )}
             <span className="text-sm capitalize">
-              {multiplayerStatus === 'registered' ? 'Online' : 
-               multiplayerStatus === 'connected' ? 'Connecting...' :
-               multiplayerStatus === 'connecting' ? 'Connecting...' :
-               'Offline'}
+              {multiplayerStatus === "registered"
+                ? "Online"
+                : multiplayerStatus === "connected"
+                ? "Connecting..."
+                : multiplayerStatus === "connecting"
+                ? "Connecting..."
+                : "Offline"}
             </span>
           </div>
           {multiplayerConnected && (
             <div className="text-xs text-gray-300 mt-1">
-              {onlinePlayerCount} player{onlinePlayerCount !== 1 ? 's' : ''} online
+              {onlinePlayerCount} player{onlinePlayerCount !== 1 ? "s" : ""}{" "}
+              online
             </div>
           )}
           {multiplayerMessage && (
@@ -1191,8 +1198,12 @@ const App = observer(() => {
       {showUsernameModal && (
         <div className="absolute inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-8 text-center max-w-md mx-4">
-            <h2 className="text-3xl font-bold text-gray-800 mb-4">Welcome to Stick Runner!</h2>
-            <p className="text-gray-600 mb-6">Choose a username to get started:</p>
+            <h2 className="text-3xl font-bold text-gray-800 mb-4">
+              Welcome to Stick Runner!
+            </h2>
+            <p className="text-gray-600 mb-6">
+              Choose a username to get started:
+            </p>
             <form onSubmit={handleUsernameSubmit} className="space-y-4">
               <input
                 type="text"
