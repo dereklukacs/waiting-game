@@ -367,12 +367,12 @@ const App = observer(() => {
       }
       
       
-      // Check gate collisions with individual cubes
+      // Check gate collisions with individual challengers
       for (let i = gates.length - 1; i >= 0; i--) {
         const gate = gates[i];
         const gateAny = gate as any;
         
-        // Check each cube individually for gate collision
+        // Check each challenger individually for gate collision
         for (let cubeIndex = cubes.length - 1; cubeIndex >= 0; cubeIndex--) {
           const testCube = cubes[cubeIndex];
           const cubeId = `${gateAny.pairId}_${cubeIndex}`;
@@ -797,7 +797,7 @@ const App = observer(() => {
       obstacles.length = 0;
       obstacleCounter = 0;
       
-      // Clear all cubes and stick people
+      // Clear all challengers and stick people
       while (cubes.length > 0) {
         const removedCube = cubes.pop();
         const removedStickPerson = stickPeople.pop();
@@ -878,7 +878,7 @@ const App = observer(() => {
     <div className="relative w-full h-screen">
       <div ref={mountRef} className="w-full h-screen" />
       <div className="absolute top-4 left-4 bg-black bg-opacity-50 text-white px-4 py-2 rounded-lg text-xl font-bold">
-        Cubes: {mobCount}
+        Challengers: {mobCount}
       </div>
       
       {/* Claude Status Display */}
@@ -938,7 +938,7 @@ const App = observer(() => {
         <div className="absolute inset-0 bg-black bg-opacity-75 flex items-center justify-center">
           <div className="bg-white rounded-lg p-8 text-center">
             <h2 className="text-4xl font-bold text-red-600 mb-4">Game Over!</h2>
-            <p className="text-xl text-gray-700 mb-6">All your cubes were eliminated!</p>
+            <p className="text-xl text-gray-700 mb-6">All your challengers were eliminated!</p>
             <button
               onClick={() => (window as any).restartGame?.()}
               className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
@@ -948,6 +948,19 @@ const App = observer(() => {
           </div>
         </div>
       )}
+
+      {/* Game Instructions */}
+      <div className="absolute bottom-4 left-4 bg-black bg-opacity-60 text-white px-4 py-3 rounded-lg text-sm max-w-xs">
+        <div className="font-bold mb-2">How to Play:</div>
+        <div className="space-y-1">
+          <div>• Drag mouse to move left/right</div>
+          <div>• Spacebar to jump over obstacles</div>
+          <div>• Go through blue gates (add challengers)</div>
+          <div>• Avoid red gates (remove challengers)</div>
+          <div>• Shoot zombies automatically</div>
+          <div>• Don't let all challengers get eliminated!</div>
+        </div>
+      </div>
     </div>
   );
 });

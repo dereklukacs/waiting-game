@@ -79,3 +79,7 @@ let's add a force start option that allows me to start the game when claude has 
 let's add obstacles approximately 1 for every 2 sets of gates. Let's keep the obstacles centered in the two halves of the road
 
 the obstacles should remove stick people who touch them
+
+let's have the instructions of how to play in the lower left corner
+
+let's stop referring to things as cubes. Let's call them challengers
