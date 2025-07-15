@@ -36,7 +36,7 @@ export const CONFIG = {
   BULLET_DAMAGE_DISTANCE: 0.5, // How close bullets need to be to hit zombies (increased)
 
   // Obstacle Properties
-  OBSTACLE_WIDTH: 1.0, // Width of obstacles (smaller for easier navigation)
+  OBSTACLE_WIDTH: 2.4, // Width of obstacles (80% of one lane width)
   OBSTACLE_HEIGHT: 0.3, // Height of obstacles (lower for easier jumping)
   OBSTACLE_DEPTH: 0.4, // Depth of obstacles
   OBSTACLE_SPAWN_RATE: 0.002, // Very low spawn rate (0.2% per frame)

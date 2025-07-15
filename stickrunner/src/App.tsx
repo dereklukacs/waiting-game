@@ -1053,7 +1053,7 @@ const App = observer(() => {
               type="text"
               value={usernameInput}
               onChange={(e) => setUsernameInput(e.target.value)}
-              className="text-sm px-2 py-1 rounded text-black focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="text-sm px-2 py-1 rounded text-white bg-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
               maxLength={20}
               autoFocus
               onKeyDown={(e) => e.key === "Escape" && cancelEditingUsername()}
