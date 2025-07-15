@@ -108,10 +108,7 @@ export class StickPerson {
       this.jumpCooldown--;
     }
     
-    // Auto-jump trigger (stick figures jump automatically while running)
-    if (!this.isFalling && !this.isJumping && this.jumpCooldown <= 0) {
-      this.startJump();
-    }
+    // Manual jumping only - no auto-jump
     
     if (this.isFalling) {
       // Falling animation
@@ -184,6 +181,16 @@ export class StickPerson {
 
   public canShoot(): boolean {
     return !this.isFalling && this.shootCooldown <= 0;
+  }
+
+  public canJump(): boolean {
+    return !this.isFalling && !this.isJumping && this.jumpCooldown <= 0;
+  }
+
+  public jump(): boolean {
+    if (!this.canJump()) return false;
+    this.startJump();
+    return true;
   }
 
   public shoot(): THREE.Vector3 | null {

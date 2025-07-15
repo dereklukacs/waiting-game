@@ -67,3 +67,7 @@ let's add a mechanic where the stick figures have guns and shoot. they should al
 add jumping, make them actually walk on the road (right now they're floating)
 
 they're too low now and the bullets aren't hitting the zombies
+
+can you not make the jumping timed, I want it tied to the spacebar.
+
+now let's add obstacles we have to jump over

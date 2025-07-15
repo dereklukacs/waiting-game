@@ -19,7 +19,7 @@ export const CONFIG = {
   STICK_PERSON_GROUND_Y: -1.2, // Y position when walking on road
   STICK_PERSON_JUMP_HEIGHT: 0.8, // Maximum jump height
   STICK_PERSON_JUMP_DURATION: 45, // Frames for complete jump cycle
-  STICK_PERSON_JUMP_RATE: 90, // Frames between jumps (auto-jump timing)
+  STICK_PERSON_JUMP_RATE: 15, // Frames between jumps (manual jump cooldown)
   
   // Zombie Properties
   ZOMBIE_SPEED: 0.08, // Slightly slower than camera speed

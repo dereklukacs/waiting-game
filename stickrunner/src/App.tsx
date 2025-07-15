@@ -268,10 +268,22 @@ const App = observer(() => {
       isDragging = false;
     };
 
+    // Keyboard event handlers
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.code === 'Space') {
+        event.preventDefault();
+        // Make all stick people jump
+        stickPeople.forEach(stickPerson => {
+          stickPerson.jump();
+        });
+      }
+    };
+
     // Add event listeners
     renderer.domElement.addEventListener('mousedown', handleMouseDown);
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('keydown', handleKeyDown);
 
     // Animation loop
     let animationId: number;
@@ -764,6 +776,7 @@ const App = observer(() => {
       renderer.domElement.removeEventListener('mousedown', handleMouseDown);
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('keydown', handleKeyDown);
       delete (window as any).restartGame;
       if (mountRef.current && renderer.domElement) {
         mountRef.current.removeChild(renderer.domElement);
