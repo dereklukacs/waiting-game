@@ -41,7 +41,7 @@ const App = observer(() => {
     connectionStatus: multiplayerStatus,
   } = useMultiplayerConnection({
     serverUrl: import.meta.env.PROD
-      ? "wss://your-app-name.up.railway.app/ws" // Replace with your Railway URL
+      ? "wss://waiting-game-production.up.railway.app/ws"
       : "ws://localhost:8080/ws",
     username: username && username.trim() ? username : "", // Only pass username if it's valid
     deviceId: deviceId, // Pass device ID for unique identification
