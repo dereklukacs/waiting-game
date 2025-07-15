@@ -57,7 +57,7 @@ program
       });
       
       setTimeout(() => {
-        const gameUrl = `http://localhost:5173?serverPort=${options.port}`;
+        const gameUrl = `https://waiting-game.vercel.app?serverPort=${options.port}`;
         console.log(`🎮 Opening game at: ${gameUrl}`);
         
         const openCommand = process.platform === 'darwin' ? 'open' : 

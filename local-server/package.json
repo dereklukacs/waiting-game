@@ -1,6 +1,6 @@
 {
   "name": "waiting-game",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Local server that hooks into Claude Code lifecycle events",
   "main": "src/server.js",
   "bin": {
