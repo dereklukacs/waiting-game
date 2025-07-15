@@ -26,7 +26,7 @@ const App = observer(() => {
   const [score, setScore] = useState<number>(0);
   const [liveLeaderboard, setLiveLeaderboard] = useState<Array<{username: string, score: number}>>([]);
   const [allTimeLeaderboard, setAllTimeLeaderboard] = useState<Array<{username: string, score: number}>>([]);
-  const [gameStartTime, setGameStartTime] = useState<number>(Date.now());
+  const [gameStartTime, setGameStartTime] = useState<number>(0);
 
   // Get server port from URL params (default to 3001)
   const urlParams = new URLSearchParams(window.location.search);
@@ -140,7 +140,7 @@ const App = observer(() => {
     if (!mountRef.current) return;
 
     // Initialize game start time
-    setGameStartTime(Date.now());
+    setGameStartTime(0);
 
     // Clear any existing content
     mountRef.current.innerHTML = "";
@@ -301,7 +301,8 @@ const App = observer(() => {
     let targetX = 0;
     const maxSpeed = CONFIG.MAGNETIC_POINT_MAX_SPEED;
     const roadBounds = CONFIG.ROAD_BOUNDS;
-    let shouldShoot = false;
+    let isDragging = false;
+    let lastMouseX = 0;
 
     const createGatePair = (zPosition: number) => {
       // Randomly assign which side gets positive/negative
@@ -406,36 +407,26 @@ const App = observer(() => {
     camera.lookAt(0, 0, -10);
 
     // Mouse event handlers
-    const handleMouseClick = (event: MouseEvent) => {
-      event.preventDefault();
-      shouldShoot = true;
+    const handleMouseDown = (event: MouseEvent) => {
+      isDragging = true;
+      lastMouseX = event.clientX;
     };
 
     const handleMouseMove = (event: MouseEvent) => {
-      // Get mouse position relative to canvas
-      const rect = renderer.domElement.getBoundingClientRect();
-      const mouseX = event.clientX - rect.left;
-      const normalizedX = (mouseX / rect.width) * 2 - 1; // Convert to -1 to 1 range
-      
-      // Apply deadzone: 25% on each EDGE, middle 50% is active
-      // Left 25% (-1 to -0.5) = deadzone
-      // Middle 50% (-0.5 to +0.5) = active area  
-      // Right 25% (+0.5 to +1) = deadzone
-      let activeX = 0;
-      
-      if (normalizedX <= -0.5 || normalizedX >= 0.5) {
-        // In deadzone - no movement
-        activeX = 0;
-      } else {
-        // In active area: map from -0.5 to +0.5 to full movement range
-        activeX = normalizedX * 2; // Scale up since we're using half the range
-      }
-      
-      // Map to road bounds
-      targetX = activeX * roadBounds;
-      
-      // Clamp to road bounds (safety)
+      if (!isDragging) return;
+
+      const deltaX = event.clientX - lastMouseX;
+      const sensitivity = 0.01;
+      targetX += deltaX * sensitivity;
+
+      // Clamp to road bounds
       targetX = Math.max(-roadBounds, Math.min(roadBounds, targetX));
+
+      lastMouseX = event.clientX;
+    };
+
+    const handleMouseUp = () => {
+      isDragging = false;
     };
 
     // Keyboard event handlers
@@ -450,14 +441,16 @@ const App = observer(() => {
     };
 
     // Add event listeners
-    renderer.domElement.addEventListener("click", handleMouseClick);
+    renderer.domElement.addEventListener("mousedown", handleMouseDown);
     window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
     window.addEventListener("keydown", handleKeyDown);
 
     // Animation loop
     let animationId: number;
     let gameRunning = true;
     let gamePaused = false;
+    let gameTimeFrames = 0; // Track game time in frames
     const animate = () => {
       if (!gameRunning) return; // Stop animation if game over
 
@@ -475,6 +468,9 @@ const App = observer(() => {
       }
 
       animationId = requestAnimationFrame(animate);
+
+      // Increment game time (assuming 60fps)
+      gameTimeFrames++;
 
       // Move camera forward along the road
       camera.position.z -= CONFIG.CAMERA_SPEED;
@@ -515,7 +511,7 @@ const App = observer(() => {
       }
 
       // Spawn zombies with increasing difficulty over time
-      const gameTimeMinutes = (Date.now() - gameStartTime) / (1000 * 60);
+      const gameTimeMinutes = gameTimeFrames / (60 * 60); // Convert frames to minutes (assuming 60fps)
       const spawnRateMultiplier = 1 + (gameTimeMinutes * CONFIG.ZOMBIE_SPAWN_RATE_INCREASE);
       const currentSpawnRate = CONFIG.ZOMBIE_SPAWN_RATE * spawnRateMultiplier;
       const zombieHealth = Math.max(1, Math.floor(CONFIG.ZOMBIE_BASE_HEALTH + (gameTimeMinutes * CONFIG.ZOMBIE_HEALTH_INCREASE_RATE)));
@@ -809,8 +805,8 @@ const App = observer(() => {
         if (stickPerson) {
           stickPerson.animate(0.016); // Assuming ~60fps
 
-          // Handle shooting on click
-          if (shouldShoot && stickPerson.canShoot()) {
+          // Handle shooting (auto-shoot)
+          if (stickPerson.canShoot()) {
             const bulletPosition = stickPerson.shoot();
             if (bulletPosition) {
               const newBullet = new Bullet(bulletPosition);
@@ -970,9 +966,6 @@ const App = observer(() => {
         mobCube.position.y = CONFIG.STICK_PERSON_GROUND_Y;
       }
 
-      // Reset shoot flag after processing
-      shouldShoot = false;
-
       renderer.render(scene, camera);
     };
 
@@ -1059,7 +1052,8 @@ const App = observer(() => {
       
       // Reset score and game time
       setScore(0);
-      setGameStartTime(Date.now());
+      setGameStartTime(0);
+      gameTimeFrames = 0;
       
       // Send reset score to server
       if (updateScore) {
@@ -1086,8 +1080,9 @@ const App = observer(() => {
     return () => {
       if (animationId) cancelAnimationFrame(animationId);
       window.removeEventListener("resize", handleResize);
-      renderer.domElement.removeEventListener("click", handleMouseClick);
+      renderer.domElement.removeEventListener("mousedown", handleMouseDown);
       window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
       window.removeEventListener("keydown", handleKeyDown);
       delete (window as any).restartGame;
       if (mountRef.current && renderer.domElement) {
@@ -1336,11 +1331,11 @@ const App = observer(() => {
       <div className="absolute bottom-4 left-4 bg-black/60 text-white px-4 py-3 rounded-lg text-sm max-w-xs">
         <div className="font-bold mb-2">How to Play:</div>
         <div className="space-y-1">
-          <div>• Move mouse to control movement</div>
-          <div>• Click to shoot zombies</div>
+          <div>• Drag mouse to move left/right</div>
           <div>• Spacebar to jump over obstacles</div>
           <div>• Go through blue gates (add challengers)</div>
           <div>• Avoid red gates (remove challengers)</div>
+          <div>• Shoot zombies automatically</div>
           <div>• Don't let all challengers get eliminated!</div>
         </div>
       </div>

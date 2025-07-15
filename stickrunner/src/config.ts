@@ -20,11 +20,11 @@ export const CONFIG = {
   STICK_PERSON_JUMP_HEIGHT: 0.8, // Maximum jump height
   STICK_PERSON_JUMP_DURATION: 45, // Frames for complete jump cycle
   STICK_PERSON_JUMP_RATE: 15, // Frames between jumps (manual jump cooldown)
-  
+
   // Zombie Properties
   ZOMBIE_SPEED: 0.08, // Slightly slower than camera speed
   ZOMBIE_SPAWN_DISTANCE: -50, // How far ahead zombies spawn
-  ZOMBIE_SPAWN_RATE: 0.04, // Base probability per frame of spawning a zombie (lower start)
+  ZOMBIE_SPAWN_RATE: 0.02, // Base probability per frame of spawning a zombie (lower start)
   ZOMBIE_COLLISION_DISTANCE: 0.5, // How close zombies need to be to "catch" stick people
   ZOMBIE_CLEANUP_DISTANCE: 15, // Remove zombies this far behind camera
   ZOMBIE_BASE_HEALTH: 1, // Starting health for zombies
@@ -89,9 +89,9 @@ export const CONFIG = {
     LEFT: -2.8,
     RIGHT: 2.8,
   },
-  ROAD_BOUNDARY_LEFT: -3.2,  // Left edge of road for boundary checking
-  ROAD_BOUNDARY_RIGHT: 3.2,  // Right edge of road for boundary checking
-  FALL_CLEANUP_Y: -10,       // Y position at which to remove fallen figures
+  ROAD_BOUNDARY_LEFT: -3.2, // Left edge of road for boundary checking
+  ROAD_BOUNDARY_RIGHT: 3.2, // Right edge of road for boundary checking
+  FALL_CLEANUP_Y: -10, // Y position at which to remove fallen figures
 
   // Camera Properties
   CAMERA_FOV: 75,
@@ -118,7 +118,7 @@ export const CONFIG = {
     BACKGROUND: 0x001155, // Lighter dark blue background
     ZOMBIE: 0xcc0000, // Brighter dark red
     BULLET: 0xff8800, // Orange bullets (more visible)
-    OBSTACLE: 0x8B4513, // Brown obstacles
+    OBSTACLE: 0x8b4513, // Brown obstacles
   },
 
   // Mouse Controls
@@ -145,7 +145,7 @@ export const CONFIG = {
 
     // Blue gate duplication check
     shouldDuplicate: () => Math.random() < CONFIG.BLUE_GATE_DUPLICATION_CHANCE,
-    
+
     // Zombie spawning
     shouldSpawnZombie: () => Math.random() < CONFIG.ZOMBIE_SPAWN_RATE,
     zombieSpawnX: () => (Math.random() - 0.5) * 4, // Across road width
