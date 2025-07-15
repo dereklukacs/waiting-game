@@ -301,8 +301,7 @@ const App = observer(() => {
     let targetX = 0;
     const maxSpeed = CONFIG.MAGNETIC_POINT_MAX_SPEED;
     const roadBounds = CONFIG.ROAD_BOUNDS;
-    let isDragging = false;
-    let lastMouseX = 0;
+    let shouldShoot = false;
 
     const createGatePair = (zPosition: number) => {
       // Randomly assign which side gets positive/negative
@@ -407,26 +406,22 @@ const App = observer(() => {
     camera.lookAt(0, 0, -10);
 
     // Mouse event handlers
-    const handleMouseDown = (event: MouseEvent) => {
-      isDragging = true;
-      lastMouseX = event.clientX;
+    const handleMouseClick = (event: MouseEvent) => {
+      event.preventDefault();
+      shouldShoot = true;
     };
 
     const handleMouseMove = (event: MouseEvent) => {
-      if (!isDragging) return;
-
-      const deltaX = event.clientX - lastMouseX;
-      const sensitivity = 0.01;
-      targetX += deltaX * sensitivity;
-
+      // Get mouse position relative to canvas
+      const rect = renderer.domElement.getBoundingClientRect();
+      const mouseX = event.clientX - rect.left;
+      const normalizedX = (mouseX / rect.width) * 2 - 1; // Convert to -1 to 1 range
+      
+      // Map normalized position to road bounds
+      targetX = normalizedX * roadBounds;
+      
       // Clamp to road bounds
       targetX = Math.max(-roadBounds, Math.min(roadBounds, targetX));
-
-      lastMouseX = event.clientX;
-    };
-
-    const handleMouseUp = () => {
-      isDragging = false;
     };
 
     // Keyboard event handlers
@@ -441,9 +436,8 @@ const App = observer(() => {
     };
 
     // Add event listeners
-    renderer.domElement.addEventListener("mousedown", handleMouseDown);
+    renderer.domElement.addEventListener("click", handleMouseClick);
     window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
     window.addEventListener("keydown", handleKeyDown);
 
     // Animation loop
@@ -801,8 +795,8 @@ const App = observer(() => {
         if (stickPerson) {
           stickPerson.animate(0.016); // Assuming ~60fps
 
-          // Handle shooting
-          if (stickPerson.canShoot()) {
+          // Handle shooting on click
+          if (shouldShoot && stickPerson.canShoot()) {
             const bulletPosition = stickPerson.shoot();
             if (bulletPosition) {
               const newBullet = new Bullet(bulletPosition);
@@ -962,6 +956,9 @@ const App = observer(() => {
         mobCube.position.y = CONFIG.STICK_PERSON_GROUND_Y;
       }
 
+      // Reset shoot flag after processing
+      shouldShoot = false;
+
       renderer.render(scene, camera);
     };
 
@@ -1075,9 +1072,8 @@ const App = observer(() => {
     return () => {
       if (animationId) cancelAnimationFrame(animationId);
       window.removeEventListener("resize", handleResize);
-      renderer.domElement.removeEventListener("mousedown", handleMouseDown);
+      renderer.domElement.removeEventListener("click", handleMouseClick);
       window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
       window.removeEventListener("keydown", handleKeyDown);
       delete (window as any).restartGame;
       if (mountRef.current && renderer.domElement) {
@@ -1326,11 +1322,11 @@ const App = observer(() => {
       <div className="absolute bottom-4 left-4 bg-black/60 text-white px-4 py-3 rounded-lg text-sm max-w-xs">
         <div className="font-bold mb-2">How to Play:</div>
         <div className="space-y-1">
-          <div>• Drag mouse to move left/right</div>
+          <div>• Move mouse to control movement</div>
+          <div>• Click to shoot zombies</div>
           <div>• Spacebar to jump over obstacles</div>
           <div>• Go through blue gates (add challengers)</div>
           <div>• Avoid red gates (remove challengers)</div>
-          <div>• Shoot zombies automatically</div>
           <div>• Don't let all challengers get eliminated!</div>
         </div>
       </div>
