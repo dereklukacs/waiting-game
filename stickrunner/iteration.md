@@ -142,5 +142,12 @@ Let's have the "claude idle" screen say the current score and say something like
 let's keep the force play button, but only for localhost / dev
 
 let's add a death animation to the stick figures, let's have them turn red and fall over in 500 ms
-========= UNFINISHED TASKS BELOW THIS LINE =======
+
 can you add some randomness to the death animation? different hues and timing and fall angles?
+
+Let's make the gates more interesting. Can you start by nicely refactoring the code so that the gates can be replaced with different types of gates? We should have some logic for picking what gates to use and then some nicely modular logic surrounding how to render the gate, hit detect, etc
+
+the death animation is playing for figures that are falling, don't play that, just play the fall animation
+========= UNFINISHED TASKS BELOW THIS LINE =======
+
+the death animation is no longer playing on the red gates. also these figures are not getting removed from the scene so on the next play through they are still there

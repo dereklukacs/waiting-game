@@ -9,6 +9,8 @@ import { Bullet } from "./Bullet";
 import { Obstacle } from "./Obstacle";
 import { useClaudeStatus } from "./hooks/useClaudeStatus";
 import { useMultiplayerConnection } from "./hooks/useMultiplayerConnection";
+import { GateFactory } from "./gates/GateFactory";
+import { BaseGate } from "./gates/BaseGate";
 
 const App = observer(() => {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -274,7 +276,8 @@ const App = observer(() => {
     scene.add(cube);
 
     // Dynamic gate generation
-    const gates: THREE.Group[] = [];
+    const gates: BaseGate[] = [];
+    const gateFactory = new GateFactory();
     let nextGateZ = CONFIG.INITIAL_GATE_Z;
     const gateSpacing = CONFIG.GATE_SPACING;
 
@@ -307,99 +310,12 @@ const App = observer(() => {
     let lastMouseX = 0;
 
     const createGatePair = (zPosition: number) => {
-      // Randomly assign which side gets positive/negative
-      const leftIsPositive = CONFIG.RNG.isLeftGatePositive();
-
-      // Create left gate
-      const leftGate = new THREE.Group();
-      const leftColor = leftIsPositive
-        ? CONFIG.COLORS.POSITIVE_GATE
-        : CONFIG.COLORS.NEGATIVE_GATE;
-
-      const leftPostGeometry = new THREE.BoxGeometry(0.3, 3, 0.3);
-      const leftPostMaterial = new THREE.MeshBasicMaterial({
-        color: leftColor,
+      const gatePair = gateFactory.createGatePair(zPosition, currentLevel);
+      
+      gatePair.forEach(gate => {
+        scene.add(gate.group);
+        gates.push(gate);
       });
-
-      const leftInnerPost = new THREE.Mesh(leftPostGeometry, leftPostMaterial);
-      leftInnerPost.position.set(-0.2, 0.5, 0); // Move left post to the left side
-      leftGate.add(leftInnerPost);
-
-      const leftOuterPost = new THREE.Mesh(leftPostGeometry, leftPostMaterial);
-      leftOuterPost.position.set(-3, 0.5, 0);
-      leftGate.add(leftOuterPost);
-
-      // Add force field for left gate
-      const leftForceFieldGeometry = new THREE.PlaneGeometry(3, 3);
-      const leftForceFieldMaterial = new THREE.MeshBasicMaterial({
-        color: leftColor,
-        transparent: true,
-        opacity: 0.3,
-        side: THREE.DoubleSide,
-      });
-      const leftForceField = new THREE.Mesh(
-        leftForceFieldGeometry,
-        leftForceFieldMaterial
-      );
-      leftForceField.position.set(-1.5, 0.5, 0);
-      leftGate.add(leftForceField);
-
-      leftGate.position.set(0, -2, zPosition);
-      (leftGate as any).isPositive = leftIsPositive;
-      (leftGate as any).hasTriggered = false;
-      (leftGate as any).side = "left";
-      (leftGate as any).pairId = zPosition;
-
-      // Create right gate
-      const rightGate = new THREE.Group();
-      const rightColor = !leftIsPositive
-        ? CONFIG.COLORS.POSITIVE_GATE
-        : CONFIG.COLORS.NEGATIVE_GATE;
-
-      const rightPostGeometry = new THREE.BoxGeometry(0.3, 3, 0.3);
-      const rightPostMaterial = new THREE.MeshBasicMaterial({
-        color: rightColor,
-      });
-
-      const rightInnerPost = new THREE.Mesh(
-        rightPostGeometry,
-        rightPostMaterial
-      );
-      rightInnerPost.position.set(0.2, 0.5, 0); // Move right post to the right side
-      rightGate.add(rightInnerPost);
-
-      const rightOuterPost = new THREE.Mesh(
-        rightPostGeometry,
-        rightPostMaterial
-      );
-      rightOuterPost.position.set(3, 0.5, 0);
-      rightGate.add(rightOuterPost);
-
-      // Add force field for right gate
-      const rightForceFieldGeometry = new THREE.PlaneGeometry(3, 3);
-      const rightForceFieldMaterial = new THREE.MeshBasicMaterial({
-        color: rightColor,
-        transparent: true,
-        opacity: 0.3,
-        side: THREE.DoubleSide,
-      });
-      const rightForceField = new THREE.Mesh(
-        rightForceFieldGeometry,
-        rightForceFieldMaterial
-      );
-      rightForceField.position.set(1.5, 0.5, 0);
-      rightGate.add(rightForceField);
-
-      rightGate.position.set(0, -2, zPosition);
-      (rightGate as any).isPositive = !leftIsPositive;
-      (rightGate as any).hasTriggered = false;
-      (rightGate as any).side = "right";
-      (rightGate as any).pairId = zPosition;
-
-      scene.add(leftGate);
-      scene.add(rightGate);
-      gates.push(leftGate);
-      gates.push(rightGate);
     };
 
     // No initial gates - all gates will be generated programmatically
@@ -560,102 +476,66 @@ const App = observer(() => {
       // Check gate collisions with individual challengers
       for (let i = gates.length - 1; i >= 0; i--) {
         const gate = gates[i];
-        const gateAny = gate as any;
 
         // Check each challenger individually for gate collision
         for (let cubeIndex = cubes.length - 1; cubeIndex >= 0; cubeIndex--) {
           const testCube = cubes[cubeIndex];
-          const cubeId = `${gateAny.pairId}_${cubeIndex}`;
+          const cubeId = `${gate.pairId}_${cubeIndex}`;
 
           // Check if this specific cube has already triggered this gate
           if (!triggeredPairs.has(cubeId)) {
-            let inGateRange = false;
-
-            if (gateAny.side === "left") {
-              // Left gate spans from x = -3 to x = 0
-              inGateRange =
-                testCube.position.x >= -3 && testCube.position.x <= 0;
-            } else if (gateAny.side === "right") {
-              // Right gate spans from x = 0 to x = 3
-              inGateRange =
-                testCube.position.x >= 0 && testCube.position.x <= 3;
-            }
-
             // Check if cube is passing through the gate
-            if (
-              inGateRange &&
-              Math.abs(gate.position.z - testCube.position.z) < 1
-            ) {
+            if (gate.checkCollision(testCube.position)) {
               // Mark this cube as having triggered this gate
               triggeredPairs.add(cubeId);
 
-              if (gateAny.isPositive) {
-                // Blue gate: 30% chance to duplicate this cube
-                if (CONFIG.RNG.shouldDuplicate()) {
-                  currentMobCount++;
+              // Apply gate effect
+              const result = gate.applyEffect(
+                cubeIndex,
+                cubes,
+                stickPeople,
+                scene,
+                geometry,
+                material,
+                cubeVelocities
+              );
 
-                  // Create new collision box (invisible)
-                  const newCube = new THREE.Mesh(geometry, material.clone());
-                  newCube.visible = false;
-                  newCube.position.set(
-                    testCube.position.x + CONFIG.RNG.cubeSpawnOffsetX(),
-                    testCube.position.y,
-                    testCube.position.z + CONFIG.RNG.cubeSpawnOffsetZ()
-                  );
-                  scene.add(newCube);
-                  cubes.push(newCube);
-                  cubeVelocities.push(new THREE.Vector3(0, 0, 0));
-
-                  // Create new stick person (visible)
-                  const newStickPerson = new StickPerson();
-                  newStickPerson.setPosition(
-                    newCube.position.x,
-                    newCube.position.y,
-                    newCube.position.z
-                  );
-                  scene.add(newStickPerson.group);
-                  stickPeople.push(newStickPerson);
-
-                  setMobCount(currentMobCount);
-                }
-              } else {
-                // Red gate: delete this cube and stick person
-                currentMobCount--;
-                scene.remove(testCube);
-                testCube.geometry.dispose();
-                (testCube.material as THREE.Material).dispose();
-
-                // Trigger death animation for corresponding stick person
+              currentMobCount += result.mobCountChange;
+              
+              if (result.shouldRemove) {
+                // Handle dying stick person for death animation
                 const stickPerson = stickPeople[cubeIndex];
-                if (stickPerson && !stickPerson.isDying) {
+                if (stickPerson && !stickPerson.isDying && !stickPerson.isFalling) {
                   stickPerson.startDying();
                   dyingStickPeople.push(stickPerson);
                 }
-
+                
                 cubes.splice(cubeIndex, 1);
                 cubeVelocities.splice(cubeIndex, 1);
                 stickPeople.splice(cubeIndex, 1);
-                setMobCount(currentMobCount);
+              }
+              
+              setMobCount(currentMobCount);
 
-                // Check for game over
-                if (cubes.length === 0) {
-                  gameRunning = false;
-                  setGameOver(true);
-                }
+              // Check for game over
+              if (cubes.length === 0) {
+                gameRunning = false;
+                setGameOver(true);
               }
             }
           }
         }
 
         // Remove gates that are far behind and clean up triggered pairs
-        if (gate.position.z > camera.position.z + 20) {
+        if (gate.group.position.z > camera.position.z + 20) {
           // Clean up all triggered pairs for this gate
           const keysToDelete = Array.from(triggeredPairs).filter((key) =>
-            key.toString().startsWith(gateAny.pairId.toString())
+            key.toString().startsWith(gate.pairId.toString())
           );
           keysToDelete.forEach((key) => triggeredPairs.delete(key));
 
-          scene.remove(gate);
+          scene.remove(gate.group);
+          gate.dispose();
           gates.splice(i, 1);
         }
       }
@@ -726,7 +606,7 @@ const App = observer(() => {
             currentMobCount--;
 
             // Trigger death animation for stick person
-            if (!stickPerson.isDying) {
+            if (!stickPerson.isDying && !stickPerson.isFalling) {
               stickPerson.startDying();
               dyingStickPeople.push(stickPerson);
             }
@@ -780,7 +660,7 @@ const App = observer(() => {
             currentMobCount--;
 
             // Trigger death animation for stick person
-            if (!stickPerson.isDying) {
+            if (!stickPerson.isDying && !stickPerson.isFalling) {
               stickPerson.startDying();
               dyingStickPeople.push(stickPerson);
             }
@@ -870,11 +750,8 @@ const App = observer(() => {
           ) {
             currentMobCount--;
 
-            // Trigger death animation for stick person
-            if (!stickPerson.isDying) {
-              stickPerson.startDying();
-              dyingStickPeople.push(stickPerson);
-            }
+            // Don't trigger death animation for falling figures - they should just be removed
+            // The falling animation will continue until removal
 
             // Remove corresponding cube
             scene.remove(mobCube);
@@ -883,7 +760,9 @@ const App = observer(() => {
             cubes.splice(index, 1);
             cubeVelocities.splice(index, 1);
             
-            // Remove stick person from array
+            // Remove stick person from scene and array immediately
+            scene.remove(stickPerson.group);
+            stickPerson.dispose();
             stickPeople.splice(index, 1);
 
             setMobCount(currentMobCount);
@@ -1038,7 +917,8 @@ const App = observer(() => {
 
       // Clear all existing gates
       gates.forEach((gate) => {
-        scene.remove(gate);
+        scene.remove(gate.group);
+        gate.dispose();
       });
       gates.length = 0;
 
