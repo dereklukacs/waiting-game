@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
@@ -29,6 +30,7 @@ type Message struct {
 // RegisterData represents user registration data
 type RegisterData struct {
 	Username string `json:"username"`
+	DeviceID string `json:"deviceId"`
 }
 
 // ResponseData represents server response data
@@ -37,10 +39,16 @@ type ResponseData struct {
 	Message  string `json:"message"`
 }
 
+// PlayerCountData represents player count data
+type PlayerCountData struct {
+	Count int `json:"count"`
+}
+
 // Client represents a connected client
 type Client struct {
 	ID       string
 	Username string
+	DeviceID string
 	Conn     *websocket.Conn
 	Send     chan []byte
 }
@@ -49,6 +57,9 @@ type Client struct {
 type Hub struct {
 	// Registered clients
 	clients map[*Client]bool
+
+	// Device ID to client mapping for deduplication
+	deviceClients map[string]*Client
 
 	// Register requests from the clients
 	register chan *Client
@@ -62,9 +73,10 @@ type Hub struct {
 
 func newHub() *Hub {
 	return &Hub{
-		clients:    make(map[*Client]bool),
-		register:   make(chan *Client),
-		unregister: make(chan *Client),
+		clients:       make(map[*Client]bool),
+		deviceClients: make(map[string]*Client),
+		register:      make(chan *Client),
+		unregister:    make(chan *Client),
 	}
 }
 
@@ -73,20 +85,70 @@ func (h *Hub) run() {
 		select {
 		case client := <-h.register:
 			h.mutex.Lock()
+			
+			// If device already has a connection, close the old one
+			if client.DeviceID != "" {
+				if oldClient, exists := h.deviceClients[client.DeviceID]; exists {
+					log.Printf("Replacing existing connection for device %s", client.DeviceID)
+					delete(h.clients, oldClient)
+					close(oldClient.Send)
+					oldClient.Conn.Close()
+				}
+				h.deviceClients[client.DeviceID] = client
+			}
+			
 			h.clients[client] = true
 			h.mutex.Unlock()
-			log.Printf("Client registered: %s (%s)", client.Username, client.ID)
+			log.Printf("Client registered: %s (%s) Device: %s", client.Username, client.ID, client.DeviceID)
+			h.broadcastPlayerCount()
 
 		case client := <-h.unregister:
 			h.mutex.Lock()
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)
 				close(client.Send)
-				log.Printf("Client unregistered: %s (%s)", client.Username, client.ID)
+				
+				// Also remove from device mapping
+				if client.DeviceID != "" {
+					delete(h.deviceClients, client.DeviceID)
+				}
+				
+				log.Printf("Client unregistered: %s (%s) Device: %s", client.Username, client.ID, client.DeviceID)
 			}
 			h.mutex.Unlock()
+			h.broadcastPlayerCount()
 		}
 	}
+}
+
+func (h *Hub) broadcastPlayerCount() {
+	h.mutex.RLock()
+	count := len(h.clients)
+	h.mutex.RUnlock()
+
+	message := Message{
+		Type: MessageTypePlayerCount,
+		Data: PlayerCountData{
+			Count: count,
+		},
+	}
+
+	messageBytes, err := json.Marshal(message)
+	if err != nil {
+		log.Printf("Failed to marshal player count message: %v", err)
+		return
+	}
+
+	h.mutex.RLock()
+	for client := range h.clients {
+		select {
+		case client.Send <- messageBytes:
+		default:
+			close(client.Send)
+			delete(h.clients, client)
+		}
+	}
+	h.mutex.RUnlock()
 }
 
 // WebSocket upgrader
@@ -195,8 +257,15 @@ func (c *Client) handleRegister(msg Message) {
 		return
 	}
 
-	// Set client username
+	// Validate device ID
+	if regData.DeviceID == "" {
+		c.sendError("Device ID cannot be empty")
+		return
+	}
+
+	// Set client username and device ID
 	c.Username = regData.Username
+	c.DeviceID = regData.DeviceID
 
 	// Send success response
 	response := Message{
@@ -293,7 +362,11 @@ func main() {
 		w.WriteHeader(http.StatusNotFound)
 	})
 
-	port := ":8080"
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	
 	log.Printf("Multiplayer server starting on port %s", port)
-	log.Fatal(http.ListenAndServe(port, nil))
+	log.Fatal(http.ListenAndServe(":"+port, nil))
 }

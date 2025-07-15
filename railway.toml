@@ -1,0 +1,9 @@
+[build]
+builder = "nixpacks"
+watchPatterns = ["multiplayer-server/**"]
+
+[deploy]
+workingDirectory = "multiplayer-server"
+startCommand = "go run main.go"
+healthcheckPath = "/health"
+healthcheckTimeout = 300

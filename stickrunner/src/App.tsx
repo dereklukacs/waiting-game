@@ -21,6 +21,8 @@ const App = observer(() => {
   const [usernameInput, setUsernameInput] = useState('');
   const [editingUsername, setEditingUsername] = useState(false);
   const [multiplayerMessage, setMultiplayerMessage] = useState<string>('');
+  const [onlinePlayerCount, setOnlinePlayerCount] = useState<number>(0);
+  const [deviceId, setDeviceId] = useState<string>('');
 
   // Get server port from URL params (default to 3001)
   const urlParams = new URLSearchParams(window.location.search);
@@ -38,8 +40,11 @@ const App = observer(() => {
     isRegistered: multiplayerRegistered,
     connectionStatus: multiplayerStatus,
   } = useMultiplayerConnection({
-    serverUrl: 'ws://localhost:8080/ws',
+    serverUrl: import.meta.env.PROD
+      ? 'wss://your-app-name.up.railway.app/ws'  // Replace with your Railway URL
+      : 'ws://localhost:8080/ws',
     username: username && username.trim() ? username : '', // Only pass username if it's valid
+    deviceId: deviceId, // Pass device ID for unique identification
     onConnected: () => {
       console.log('Multiplayer connected');
     },
@@ -47,6 +52,9 @@ const App = observer(() => {
       console.log('Multiplayer registered:', data);
       setMultiplayerMessage(data.message);
       setTimeout(() => setMultiplayerMessage(''), 3000);
+    },
+    onPlayerCountUpdate: (count) => {
+      setOnlinePlayerCount(count);
     },
     onError: (error) => {
       console.error('Multiplayer error:', error);
@@ -72,7 +80,7 @@ const App = observer(() => {
     forceStartedRef.current = forceStarted;
   }, [forceStarted]);
 
-  // Check for existing username on mount
+  // Check for existing username and device ID on mount
   useEffect(() => {
     const savedUsername = localStorage.getItem('stickrunner-username');
     if (savedUsername) {
@@ -80,6 +88,14 @@ const App = observer(() => {
     } else {
       setShowUsernameModal(true);
     }
+
+    // Generate or retrieve device ID
+    let savedDeviceId = localStorage.getItem('stickrunner-device-id');
+    if (!savedDeviceId) {
+      savedDeviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11);
+      localStorage.setItem('stickrunner-device-id', savedDeviceId);
+    }
+    setDeviceId(savedDeviceId);
   }, []);
 
   // Handle username submission
@@ -1123,6 +1139,11 @@ const App = observer(() => {
                'Offline'}
             </span>
           </div>
+          {multiplayerConnected && (
+            <div className="text-xs text-gray-300 mt-1">
+              {onlinePlayerCount} player{onlinePlayerCount !== 1 ? 's' : ''} online
+            </div>
+          )}
           {multiplayerMessage && (
             <div className="text-xs text-gray-300 mt-1 max-w-48 truncate">
               {multiplayerMessage}

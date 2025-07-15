@@ -8,6 +8,7 @@ interface MultiplayerMessage {
 
 interface RegisterData {
   username: string;
+  deviceId: string;
 }
 
 interface ResponseData {
@@ -15,21 +16,29 @@ interface ResponseData {
   message: string;
 }
 
+interface PlayerCountData {
+  count: number;
+}
+
 interface UseMultiplayerConnectionProps {
   serverUrl: string;
   username: string;
+  deviceId: string;
   onConnected?: () => void;
   onDisconnected?: () => void;
   onRegistered?: (data: ResponseData) => void;
+  onPlayerCountUpdate?: (count: number) => void;
   onError?: (error: string) => void;
 }
 
 export const useMultiplayerConnection = ({
   serverUrl,
   username,
+  deviceId,
   onConnected,
   onDisconnected,
   onRegistered,
+  onPlayerCountUpdate,
   onError,
 }: UseMultiplayerConnectionProps) => {
   const [isConnected, setIsConnected] = useState(false);
@@ -54,9 +63,9 @@ export const useMultiplayerConnection = ({
         setConnectionStatus('connected');
         onConnected?.();
         
-        // Auto-register with username if provided
-        if (username) {
-          register(username);
+        // Auto-register with username and deviceId if provided
+        if (username && deviceId) {
+          register(username, deviceId);
         }
       };
 
@@ -116,11 +125,12 @@ export const useMultiplayerConnection = ({
     }
   }, []);
 
-  const register = useCallback((usernameToRegister: string) => {
+  const register = useCallback((usernameToRegister: string, deviceIdToRegister: string) => {
     const registerMessage: MultiplayerMessage = {
       type: 'register',
       data: {
         username: usernameToRegister,
+        deviceId: deviceIdToRegister,
       } as RegisterData,
     };
     sendMessage(registerMessage);
@@ -136,6 +146,12 @@ export const useMultiplayerConnection = ({
         onRegistered?.(responseData);
         break;
 
+      case 'player_count':
+        const playerCountData = message.data as PlayerCountData;
+        console.log('Player count update:', playerCountData.count);
+        onPlayerCountUpdate?.(playerCountData.count);
+        break;
+
       case 'error':
         const errorMessage = message.data?.message || 'Unknown error';
         console.error('Server error:', errorMessage);
@@ -145,25 +161,25 @@ export const useMultiplayerConnection = ({
       default:
         console.log('Unknown message type:', message.type);
     }
-  }, [onRegistered, onError]);
+  }, [onRegistered, onPlayerCountUpdate, onError]);
 
-  // Connect on mount only when username is available
+  // Connect on mount only when username and deviceId are available
   useEffect(() => {
-    if (username && username.trim()) {
+    if (username && username.trim() && deviceId) {
       connect();
     }
 
     return () => {
       disconnect();
     };
-  }, [username]); // Remove connect and disconnect from deps to avoid loops
+  }, [username, deviceId]); // Include deviceId in dependencies
 
-  // Reconnect when username changes
+  // Reconnect when username or deviceId changes
   useEffect(() => {
-    if (isConnected && username && !isRegistered) {
-      register(username);
+    if (isConnected && username && deviceId && !isRegistered) {
+      register(username, deviceId);
     }
-  }, [username, isConnected, isRegistered, register]);
+  }, [username, deviceId, isConnected, isRegistered, register]);
 
   return {
     isConnected,
