@@ -61,3 +61,5 @@ improve the look of the stick figure, ideally we should have 3d structures and p
 the scene is too dark, the road and figures are not vibrant enough
 
 can we add a mechanic that if a stick figure is no longer on the road it falls off and gets removed. add the falling animation.
+
+let's add a mechanic where the stick figures have guns and shoot. they should always shoot straight forward. simulate the bullets and have them hit the zombies.
