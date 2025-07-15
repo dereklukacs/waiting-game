@@ -117,6 +117,6 @@ Let's have a second leaderboard that shows all time high scores
 
 let's make the zombies increase in number over time, let's also have their health increase
 
-========= UNFINISHED TASKS BELOW THIS LINE =======
-
 let's make it so that control of the mob is just done with mouse move, not drag. And make clicking the shooting action instead of auto shoot
+
+========= UNFINISHED TASKS BELOW THIS LINE =======
