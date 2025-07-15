@@ -185,21 +185,24 @@ const App = observer(() => {
     fillLight.position.set(50, 30, -50); // From opposite side
     scene.add(fillLight);
 
-    // Create starfield background
+    // Procedural starfield system
     const starsGeometry = new THREE.BufferGeometry();
     const starsMaterial = new THREE.PointsMaterial({
       color: CONFIG.COLORS.STARS,
       size: CONFIG.STAR_SIZE,
     });
-
-    const starsVertices = [];
+    const starsVertices: number[] = [];
+    const starPositions: { x: number; y: number; z: number }[] = [];
+    
+    // Generate initial stars
     for (let i = 0; i < CONFIG.STAR_COUNT; i++) {
       const x = CONFIG.RNG.starPosition();
       const y = CONFIG.RNG.starPosition();
       const z = CONFIG.RNG.starPosition();
       starsVertices.push(x, y, z);
+      starPositions.push({ x, y, z });
     }
-
+    
     starsGeometry.setAttribute(
       "position",
       new THREE.Float32BufferAttribute(starsVertices, 3)
@@ -209,51 +212,66 @@ const App = observer(() => {
 
     renderer.setClearColor(CONFIG.COLORS.BACKGROUND);
 
-    // Create road with shadow receiving
-    const roadGeometry = new THREE.PlaneGeometry(
-      CONFIG.ROAD_WIDTH,
-      CONFIG.ROAD_LENGTH
-    );
+    // Procedural road system
+    const roadSegments: THREE.Mesh[] = [];
+    const roadLineSegments: THREE.Mesh[] = [];
+    const roadSegmentLength = 100; // Length of each road segment
+    let nextRoadSegmentZ = 0; // Z position for next road segment
+    
+    // Create road materials
     const roadMaterial = new THREE.MeshLambertMaterial({
       color: CONFIG.COLORS.ROAD,
     });
-    const road = new THREE.Mesh(roadGeometry, roadMaterial);
-    road.rotation.x = -Math.PI / 2; // Rotate to be horizontal
-    road.position.y = CONFIG.ROAD_POSITION_Y;
-    road.position.z = CONFIG.ROAD_POSITION_Z; // Center the road extending forward
-    road.receiveShadow = true;
-    scene.add(road);
-
-    // Create road lines
-    const lineGeometry = new THREE.PlaneGeometry(
-      CONFIG.ROAD_LINE_WIDTH,
-      CONFIG.ROAD_LENGTH
-    );
     const lineMaterial = new THREE.MeshBasicMaterial({
       color: CONFIG.COLORS.ROAD_LINES,
     });
-
-    // Center line
-    const centerLine = new THREE.Mesh(lineGeometry, lineMaterial);
-    centerLine.rotation.x = -Math.PI / 2;
-    centerLine.position.y = -1.98;
-    centerLine.position.z = -500;
-    scene.add(centerLine);
-
-    // Side lines
-    const leftLine = new THREE.Mesh(lineGeometry, lineMaterial);
-    leftLine.rotation.x = -Math.PI / 2;
-    leftLine.position.y = -1.98;
-    leftLine.position.x = -2.8;
-    leftLine.position.z = -500;
-    scene.add(leftLine);
-
-    const rightLine = new THREE.Mesh(lineGeometry, lineMaterial);
-    rightLine.rotation.x = -Math.PI / 2;
-    rightLine.position.y = -1.98;
-    rightLine.position.x = 2.8;
-    rightLine.position.z = -500;
-    scene.add(rightLine);
+    
+    const createRoadSegment = (zPosition: number) => {
+      // Create road segment
+      const roadGeometry = new THREE.PlaneGeometry(CONFIG.ROAD_WIDTH, roadSegmentLength);
+      const roadSegment = new THREE.Mesh(roadGeometry, roadMaterial);
+      roadSegment.rotation.x = -Math.PI / 2;
+      roadSegment.position.y = CONFIG.ROAD_POSITION_Y;
+      roadSegment.position.z = zPosition;
+      roadSegment.receiveShadow = true;
+      scene.add(roadSegment);
+      roadSegments.push(roadSegment);
+      
+      // Create road lines for this segment
+      const lineGeometry = new THREE.PlaneGeometry(CONFIG.ROAD_LINE_WIDTH, roadSegmentLength);
+      
+      // Center line
+      const centerLine = new THREE.Mesh(lineGeometry, lineMaterial);
+      centerLine.rotation.x = -Math.PI / 2;
+      centerLine.position.y = -1.98;
+      centerLine.position.z = zPosition;
+      scene.add(centerLine);
+      roadLineSegments.push(centerLine);
+      
+      // Left line
+      const leftLine = new THREE.Mesh(lineGeometry, lineMaterial);
+      leftLine.rotation.x = -Math.PI / 2;
+      leftLine.position.y = -1.98;
+      leftLine.position.x = -2.8;
+      leftLine.position.z = zPosition;
+      scene.add(leftLine);
+      roadLineSegments.push(leftLine);
+      
+      // Right line
+      const rightLine = new THREE.Mesh(lineGeometry, lineMaterial);
+      rightLine.rotation.x = -Math.PI / 2;
+      rightLine.position.y = -1.98;
+      rightLine.position.x = 2.8;
+      rightLine.position.z = zPosition;
+      scene.add(rightLine);
+      roadLineSegments.push(rightLine);
+    };
+    
+    // Generate initial road segments
+    for (let i = 0; i < 20; i++) {
+      createRoadSegment(nextRoadSegmentZ);
+      nextRoadSegmentZ -= roadSegmentLength;
+    }
 
     // Create first stick person (player)
     const firstStickPerson = new StickPerson();
@@ -426,6 +444,56 @@ const App = observer(() => {
       const moveStep = Math.sign(deltaX) * Math.min(Math.abs(deltaX), moveSpeed);
       magnetPoint.x += moveStep;
 
+      // Procedural road generation - generate new segments ahead
+      if (camera.position.z < nextRoadSegmentZ + 500) {
+        createRoadSegment(nextRoadSegmentZ);
+        nextRoadSegmentZ -= roadSegmentLength;
+      }
+
+      // Cleanup old road segments behind camera
+      for (let i = roadSegments.length - 1; i >= 0; i--) {
+        const roadSegment = roadSegments[i];
+        if (roadSegment.position.z > camera.position.z + 200) {
+          scene.remove(roadSegment);
+          roadSegment.geometry.dispose();
+          (roadSegment.material as THREE.Material).dispose();
+          roadSegments.splice(i, 1);
+        }
+      }
+
+      // Cleanup old road line segments behind camera
+      for (let i = roadLineSegments.length - 1; i >= 0; i--) {
+        const lineSegment = roadLineSegments[i];
+        if (lineSegment.position.z > camera.position.z + 200) {
+          scene.remove(lineSegment);
+          lineSegment.geometry.dispose();
+          (lineSegment.material as THREE.Material).dispose();
+          roadLineSegments.splice(i, 1);
+        }
+      }
+
+      // Procedural star generation - move stars that are behind camera to the front
+      const starsPositionAttribute = starsGeometry.getAttribute('position');
+      let starsUpdated = false;
+      
+      for (let i = 0; i < starPositions.length; i++) {
+        const star = starPositions[i];
+        if (star.z > camera.position.z + 100) {
+          // Move star to front of camera
+          star.z = camera.position.z - CONFIG.STAR_SPREAD / 2 - Math.random() * CONFIG.STAR_SPREAD / 2;
+          star.x = CONFIG.RNG.starPosition();
+          star.y = CONFIG.RNG.starPosition();
+          
+          // Update vertex buffer
+          starsPositionAttribute.setXYZ(i, star.x, star.y, star.z);
+          starsUpdated = true;
+        }
+      }
+      
+      if (starsUpdated) {
+        starsPositionAttribute.needsUpdate = true;
+      }
+
       // Generate new gate pairs ahead with consistent spacing
       if (camera.position.z < nextGateZ + 30) {
         createGatePair(nextGateZ);
@@ -527,7 +595,7 @@ const App = observer(() => {
         }
 
         // Remove gates that are far behind and clean up triggered pairs
-        if (gate.group.position.z > camera.position.z + 20) {
+        if (gate.group.position.z > camera.position.z + CONFIG.GATE_CLEANUP_DISTANCE) {
           // Clean up all triggered pairs for this gate
           const keysToDelete = Array.from(triggeredPairs).filter((key) =>
             key.toString().startsWith(gate.pairId.toString())
@@ -984,6 +1052,39 @@ const App = observer(() => {
       newStickPerson.setPosition(0, CONFIG.STICK_PERSON_GROUND_Y, 0);
       scene.add(newStickPerson.group);
       stickPeople.push(newStickPerson);
+
+      // Reset procedural road system
+      roadSegments.forEach((segment) => {
+        scene.remove(segment);
+        segment.geometry.dispose();
+        (segment.material as THREE.Material).dispose();
+      });
+      roadSegments.length = 0;
+      
+      roadLineSegments.forEach((segment) => {
+        scene.remove(segment);
+        segment.geometry.dispose();
+        (segment.material as THREE.Material).dispose();
+      });
+      roadLineSegments.length = 0;
+      
+      // Regenerate road segments
+      nextRoadSegmentZ = 0;
+      for (let i = 0; i < 20; i++) {
+        createRoadSegment(nextRoadSegmentZ);
+        nextRoadSegmentZ -= roadSegmentLength;
+      }
+
+      // Reset star positions
+      const starsPositionAttribute = starsGeometry.getAttribute('position');
+      for (let i = 0; i < starPositions.length; i++) {
+        const x = CONFIG.RNG.starPosition();
+        const y = CONFIG.RNG.starPosition();
+        const z = CONFIG.RNG.starPosition();
+        starPositions[i] = { x, y, z };
+        starsPositionAttribute.setXYZ(i, x, y, z);
+      }
+      starsPositionAttribute.needsUpdate = true;
 
       // Reset camera and magnetic point to starting positions
       camera.position.set(0, 3, 8);

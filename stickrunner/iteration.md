@@ -148,6 +148,12 @@ can you add some randomness to the death animation? different hues and timing an
 Let's make the gates more interesting. Can you start by nicely refactoring the code so that the gates can be replaced with different types of gates? We should have some logic for picking what gates to use and then some nicely modular logic surrounding how to render the gate, hit detect, etc
 
 the death animation is playing for figures that are falling, don't play that, just play the fall animation
-========= UNFINISHED TASKS BELOW THIS LINE =======
 
 the death animation is no longer playing on the red gates. also these figures are not getting removed from the scene so on the next play through they are still there
+
+the road and stars run out after a bit, let's procedurally generate it in front (and remove the assets behind the camera)
+
+please confirm that the zombies and gates are being removed after they scroll out of the view behind
+========= UNFINISHED TASKS BELOW THIS LINE =======
+
+Let's add a weapons upgrade system that controls the guns. To start with let's have these parameters: weapon damage, bullet velocity, and rate of fire
