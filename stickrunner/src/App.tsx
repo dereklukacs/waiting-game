@@ -417,10 +417,24 @@ const App = observer(() => {
       const mouseX = event.clientX - rect.left;
       const normalizedX = (mouseX / rect.width) * 2 - 1; // Convert to -1 to 1 range
       
-      // Map normalized position to road bounds
-      targetX = normalizedX * roadBounds;
+      // Apply deadzone: 25% on each EDGE, middle 50% is active
+      // Left 25% (-1 to -0.5) = deadzone
+      // Middle 50% (-0.5 to +0.5) = active area  
+      // Right 25% (+0.5 to +1) = deadzone
+      let activeX = 0;
       
-      // Clamp to road bounds
+      if (normalizedX <= -0.5 || normalizedX >= 0.5) {
+        // In deadzone - no movement
+        activeX = 0;
+      } else {
+        // In active area: map from -0.5 to +0.5 to full movement range
+        activeX = normalizedX * 2; // Scale up since we're using half the range
+      }
+      
+      // Map to road bounds
+      targetX = activeX * roadBounds;
+      
+      // Clamp to road bounds (safety)
       targetX = Math.max(-roadBounds, Math.min(roadBounds, targetX));
     };
 

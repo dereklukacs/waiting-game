@@ -120,3 +120,7 @@ let's make the zombies increase in number over time, let's also have their healt
 let's make it so that control of the mob is just done with mouse move, not drag. And make clicking the shooting action instead of auto shoot
 
 ========= UNFINISHED TASKS BELOW THIS LINE =======
+
+the zombies are still too easy. make them increase in numbers faster
+
+the mousemove range is too big, let's reduce the width of the dynamic range and have a deadzone on the outside. Let's say 25% on either side is a deadzone
