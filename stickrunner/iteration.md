@@ -63,3 +63,7 @@ the scene is too dark, the road and figures are not vibrant enough
 can we add a mechanic that if a stick figure is no longer on the road it falls off and gets removed. add the falling animation.
 
 let's add a mechanic where the stick figures have guns and shoot. they should always shoot straight forward. simulate the bullets and have them hit the zombies.
+
+add jumping, make them actually walk on the road (right now they're floating)
+
+they're too low now and the bullets aren't hitting the zombies

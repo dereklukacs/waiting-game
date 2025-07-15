@@ -16,6 +16,10 @@ export const CONFIG = {
   STICK_PERSON_LEG_SWING: 0.3,
   STICK_PERSON_ARM_SWING: 0.2,
   STICK_PERSON_BOB_HEIGHT: 0.05,
+  STICK_PERSON_GROUND_Y: -1.2, // Y position when walking on road
+  STICK_PERSON_JUMP_HEIGHT: 0.8, // Maximum jump height
+  STICK_PERSON_JUMP_DURATION: 45, // Frames for complete jump cycle
+  STICK_PERSON_JUMP_RATE: 90, // Frames between jumps (auto-jump timing)
   
   // Zombie Properties
   ZOMBIE_SPEED: 0.08, // Slightly slower than camera speed
@@ -26,10 +30,10 @@ export const CONFIG = {
 
   // Bullet Properties
   BULLET_SPEED: 0.3, // Forward speed of bullets
-  BULLET_SIZE: 0.05, // Size of bullet spheres
+  BULLET_SIZE: 0.08, // Size of bullet spheres (larger for better visibility)
   BULLET_RATE: 30, // Frames between shots (30 frames = ~0.5 seconds at 60fps)
   BULLET_RANGE: 50, // Maximum distance bullets travel
-  BULLET_DAMAGE_DISTANCE: 0.3, // How close bullets need to be to hit zombies
+  BULLET_DAMAGE_DISTANCE: 0.5, // How close bullets need to be to hit zombies (increased)
 
   // Physics
   ATTRACTION_STRENGTH: 0.022, // Slightly reduced attraction
@@ -100,7 +104,7 @@ export const CONFIG = {
     STARS: 0xffffff, // White
     BACKGROUND: 0x001155, // Lighter dark blue background
     ZOMBIE: 0xcc0000, // Brighter dark red
-    BULLET: 0xffff00, // Yellow bullets
+    BULLET: 0xff8800, // Orange bullets (more visible)
   },
 
   // Mouse Controls

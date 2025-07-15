@@ -121,7 +121,7 @@ const App = observer(() => {
 
     // Create first stick person (player)
     const firstStickPerson = new StickPerson();
-    firstStickPerson.setPosition(0, -1, 0);
+    firstStickPerson.setPosition(0, CONFIG.STICK_PERSON_GROUND_Y, 0);
     scene.add(firstStickPerson.group);
     
     // Keep geometry and material for collision detection (invisible)
@@ -131,7 +131,7 @@ const App = observer(() => {
       wireframe: false 
     });
     const cube = new THREE.Mesh(geometry, material);
-    cube.position.y = -1;
+    cube.position.y = CONFIG.STICK_PERSON_GROUND_Y;
     cube.visible = false; // Hide the collision box
     scene.add(cube);
 
@@ -156,7 +156,7 @@ const App = observer(() => {
     const triggeredPairs = new Set<string>();
     
     // Magnetic point controls (invisible point that all cubes are attracted to)
-    const magnetPoint = new THREE.Vector3(0, -1, 0); // Starting position
+    const magnetPoint = new THREE.Vector3(0, CONFIG.STICK_PERSON_GROUND_Y, 0); // Starting position
     let targetX = 0;
     const maxSpeed = CONFIG.MAGNETIC_POINT_MAX_SPEED;
     const roadBounds = CONFIG.ROAD_BOUNDS;
@@ -437,6 +437,7 @@ const App = observer(() => {
           
           if (bulletDistance < CONFIG.BULLET_DAMAGE_DISTANCE) {
             // Bullet hit zombie - remove both
+            console.log(`Zombie hit! Distance: ${bulletDistance.toFixed(2)}`);
             scene.remove(bullet.mesh);
             bullet.dispose();
             bullets.splice(k, 1);
@@ -661,7 +662,7 @@ const App = observer(() => {
         });
         
         // Keep cubes on the road surface
-        mobCube.position.y = -1;
+        mobCube.position.y = CONFIG.STICK_PERSON_GROUND_Y;
       }
       
       renderer.render(scene, camera);
@@ -716,21 +717,21 @@ const App = observer(() => {
       // Recreate the first cube (invisible collision box)
       const newCube = new THREE.Mesh(geometry, material);
       newCube.visible = false;
-      newCube.position.set(0, -1, 0);
+      newCube.position.set(0, CONFIG.STICK_PERSON_GROUND_Y, 0);
       scene.add(newCube);
       cubes.push(newCube);
       cubeVelocities.push(new THREE.Vector3(0, 0, 0));
       
       // Recreate the first stick person
       const newStickPerson = new StickPerson();
-      newStickPerson.setPosition(0, -1, 0);
+      newStickPerson.setPosition(0, CONFIG.STICK_PERSON_GROUND_Y, 0);
       scene.add(newStickPerson.group);
       stickPeople.push(newStickPerson);
       
       // Reset camera and magnetic point to starting positions
       camera.position.set(0, 3, 8);
       camera.lookAt(0, 0, -10);
-      magnetPoint.set(0, -1, 0);
+      magnetPoint.set(0, CONFIG.STICK_PERSON_GROUND_Y, 0);
       targetX = 0;
       currentMobCount = 1;
       

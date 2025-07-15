@@ -13,6 +13,9 @@ export class StickPerson {
   private fallVelocity: number = 0;
   private fallRotationVelocity: number = 0;
   private shootCooldown: number = 0;
+  private jumpTime: number = 0;
+  private jumpCooldown: number = 0;
+  private isJumping: boolean = false;
 
   constructor() {
     this.group = new THREE.Group();
@@ -91,13 +94,23 @@ export class StickPerson {
     this.group.add(rightFoot);
     
     // Set initial position
-    this.group.position.y = -0.3; // Adjust so feet are on ground
+    this.group.position.y = CONFIG.STICK_PERSON_GROUND_Y; // Position on road surface
   }
   
   public animate(deltaTime: number) {
     // Update shoot cooldown
     if (this.shootCooldown > 0) {
       this.shootCooldown--;
+    }
+    
+    // Update jump cooldown
+    if (this.jumpCooldown > 0) {
+      this.jumpCooldown--;
+    }
+    
+    // Auto-jump trigger (stick figures jump automatically while running)
+    if (!this.isFalling && !this.isJumping && this.jumpCooldown <= 0) {
+      this.startJump();
     }
     
     if (this.isFalling) {
@@ -116,6 +129,26 @@ export class StickPerson {
       this.rightArm.rotation.x = Math.sin(flailTime * 2.5) * 0.8;
       this.leftLeg.rotation.x = Math.sin(flailTime * 2.8) * 0.6;
       this.rightLeg.rotation.x = Math.sin(flailTime * 3.2) * 0.6;
+    } else if (this.isJumping) {
+      // Jumping animation
+      this.jumpTime++;
+      
+      // Calculate jump arc (parabola)
+      const jumpProgress = this.jumpTime / CONFIG.STICK_PERSON_JUMP_DURATION;
+      const jumpHeight = 4 * CONFIG.STICK_PERSON_JUMP_HEIGHT * jumpProgress * (1 - jumpProgress);
+      this.group.position.y = CONFIG.STICK_PERSON_GROUND_Y + jumpHeight;
+      
+      // Jump pose - legs tucked up, arms forward
+      const tuckAmount = Math.sin(jumpProgress * Math.PI) * 0.8;
+      this.leftLeg.rotation.x = tuckAmount;
+      this.rightLeg.rotation.x = tuckAmount;
+      this.leftArm.rotation.x = -0.3;
+      this.rightArm.rotation.x = -0.3;
+      
+      // End jump when duration is complete
+      if (this.jumpTime >= CONFIG.STICK_PERSON_JUMP_DURATION) {
+        this.endJump();
+      }
     } else {
       // Normal running animation
       this.animationTime += deltaTime * 8; // Running speed
@@ -132,10 +165,21 @@ export class StickPerson {
       this.leftArm.rotation.x = armSwing;
       this.rightArm.rotation.x = -armSwing;
       
-      // Slight bob up and down
-      const bobHeight = Math.abs(Math.sin(this.animationTime * 2)) * 0.05;
-      this.group.position.y = -0.3 + bobHeight;
+      // Keep on ground level (no bobbing - they're walking on the road)
+      this.group.position.y = CONFIG.STICK_PERSON_GROUND_Y;
     }
+  }
+
+  private startJump() {
+    this.isJumping = true;
+    this.jumpTime = 0;
+    this.jumpCooldown = CONFIG.STICK_PERSON_JUMP_RATE;
+  }
+
+  private endJump() {
+    this.isJumping = false;
+    this.jumpTime = 0;
+    this.group.position.y = CONFIG.STICK_PERSON_GROUND_Y;
   }
 
   public canShoot(): boolean {
@@ -147,20 +191,20 @@ export class StickPerson {
     
     this.shootCooldown = CONFIG.BULLET_RATE;
     
-    // Return bullet spawn position (slightly in front of stick person)
+    // Return bullet spawn position (from center of stick person)
     return new THREE.Vector3(
       this.group.position.x,
-      this.group.position.y + 0.1, // Slightly above ground
-      this.group.position.z - 0.2  // Slightly in front
+      this.group.position.y + 0.3, // At chest height
+      this.group.position.z - 0.1  // Slightly in front
     );
   }
   
   public setPosition(x: number, _y: number, z: number) {
     this.group.position.x = x;
     this.group.position.z = z;
-    // Y is handled by animation unless falling
-    if (!this.isFalling) {
-      // Y position handled by animation for non-falling figures
+    // Y is handled by animation (walking, jumping, or falling)
+    if (!this.isFalling && !this.isJumping) {
+      this.group.position.y = CONFIG.STICK_PERSON_GROUND_Y;
     }
   }
   

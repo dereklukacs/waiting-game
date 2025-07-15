@@ -105,7 +105,7 @@ export class Zombie {
     
     // Slight bob up and down (less smooth than stick people)
     const bobHeight = Math.abs(Math.sin(this.animationTime * 1.5)) * 0.03;
-    this.group.position.y = -0.25 + bobHeight;
+    this.group.position.y = -1.0 + bobHeight;
   }
   
   public setPosition(x: number, _y: number, z: number) {
