@@ -3,6 +3,8 @@ export const CONFIG = {
   // Movement and Speed
   CAMERA_SPEED: 0.12,
   MAGNETIC_POINT_MAX_SPEED: 0.18,
+  MAGNETIC_POINT_SPEED_INCREASE_RATE: 0.1, // 10% increase per level
+  MAGNETIC_POINT_MAX_MULTIPLIER: 2.0, // Maximum 2x movement speed
   ROAD_BOUNDS: 2.5,
   SPEED_INCREASE_RATE: 0.2, // Speed multiplier increase per 20 seconds (20% faster each 20 seconds)
   MAX_SPEED_MULTIPLIER: 4.0, // Maximum speed multiplier (3x original speed)
@@ -39,6 +41,12 @@ export const CONFIG = {
   BULLET_RATE: 30, // Frames between shots (30 frames = ~0.5 seconds at 60fps)
   BULLET_RANGE: 50, // Maximum distance bullets travel
   BULLET_DAMAGE_DISTANCE: 0.5, // How close bullets need to be to hit zombies (increased)
+  BULLET_BASE_DAMAGE: 1, // Base damage per bullet
+
+  // Coin Properties
+  COIN_DROP_CHANCE: 0.3, // 30% chance for zombies to drop coins
+  COIN_COLLECTION_DISTANCE: 0.6, // Distance to collect coins
+  COIN_CLEANUP_DISTANCE: 20, // Remove coins this far behind camera
 
   // Obstacle Properties
   OBSTACLE_WIDTH: 2.4, // Width of obstacles (80% of one lane width)
@@ -121,6 +129,8 @@ export const CONFIG = {
     ZOMBIE: 0xcc0000, // Brighter dark red
     BULLET: 0xff8800, // Orange bullets (more visible)
     OBSTACLE: 0x8b4513, // Brown obstacles
+    COIN: 0xffd700, // Gold coins
+    COIN_EMISSIVE: 0x332200, // Slight glow
   },
 
   // Mouse Controls

@@ -154,6 +154,15 @@ the death animation is no longer playing on the red gates. also these figures ar
 the road and stars run out after a bit, let's procedurally generate it in front (and remove the assets behind the camera)
 
 please confirm that the zombies and gates are being removed after they scroll out of the view behind
-========= UNFINISHED TASKS BELOW THIS LINE =======
 
 Let's add a weapons upgrade system that controls the guns. To start with let's have these parameters: weapon damage, bullet velocity, and rate of fire
+
+The weapon upgrades should be purchased in an upgrade purchase menu. This is accessed from the death screen.
+
+To purchase weapon upgrades, collect coins. The coins are dropped by zombies. Each zombie killed has a percentage change of dropping a coin.
+
+Coins and weapon upgrades should persist between games in local storage
+
+I think the left to right rate limit should increase slightly as the difficulty increases
+
+========= UNFINISHED TASKS BELOW THIS LINE =======

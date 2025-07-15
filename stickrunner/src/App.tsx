@@ -11,6 +11,8 @@ import { useClaudeStatus } from "./hooks/useClaudeStatus";
 import { useMultiplayerConnection } from "./hooks/useMultiplayerConnection";
 import { GateFactory } from "./gates/GateFactory";
 import { BaseGate } from "./gates/BaseGate";
+import { WeaponUpgrade } from "./WeaponUpgrade";
+import { Coin } from "./Coin";
 
 const App = observer(() => {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -30,6 +32,17 @@ const App = observer(() => {
   const [allTimeLeaderboard, setAllTimeLeaderboard] = useState<Array<{username: string, score: number}>>([]);
   const [gameStartTime, setGameStartTime] = useState<number>(0);
   const [currentLevel, setCurrentLevel] = useState<number>(1);
+  const [weaponStats, setWeaponStats] = useState({ damage: CONFIG.BULLET_BASE_DAMAGE, bulletVelocity: CONFIG.BULLET_SPEED, rateOfFire: CONFIG.BULLET_RATE });
+  const [weaponUpgradeMessage, setWeaponUpgradeMessage] = useState<string>("");
+  const [coins, setCoins] = useState<number>(() => {
+    const savedCoins = localStorage.getItem("stickrunner-coins");
+    const coinCount = savedCoins ? parseInt(savedCoins) || 0 : 0;
+    console.log("Loading coins on mount:", coinCount, "from localStorage:", savedCoins);
+    return coinCount;
+  });
+  const [showUpgradeMenu, setShowUpgradeMenu] = useState<boolean>(false);
+  const weaponUpgradeRef = useRef<WeaponUpgrade | null>(null);
+  const isFirstRender = useRef<boolean>(true);
 
   // Get server port from URL params (default to 3001)
   const urlParams = new URLSearchParams(window.location.search);
@@ -113,7 +126,20 @@ const App = observer(() => {
       localStorage.setItem("stickrunner-device-id", savedDeviceId);
     }
     setDeviceId(savedDeviceId);
+    
+    // Coins are now loaded directly in useState initializer
   }, []);
+
+  // Save coins to localStorage whenever they change (skip first render)
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      console.log("Skipping save on first render, coins loaded:", coins);
+      return;
+    }
+    console.log("Saving coins to localStorage:", coins);
+    localStorage.setItem("stickrunner-coins", coins.toString());
+  }, [coins]);
 
   // Handle username submission
   const handleUsernameSubmit = (e?: React.FormEvent) => {
@@ -312,6 +338,17 @@ const App = observer(() => {
     // Bullet system
     const bullets: Bullet[] = [];
 
+    // Weapon upgrade system
+    const weaponUpgrade = new WeaponUpgrade();
+    weaponUpgrade.loadFromLocalStorage(); // Load saved upgrades
+    weaponUpgradeRef.current = weaponUpgrade;
+    
+    // Update weapon stats state to reflect loaded upgrades
+    setWeaponStats(weaponUpgrade.getStats());
+
+    // Coin system
+    const coinsInGame: Coin[] = [];
+
     // Obstacle system - tied to gate generation
     const obstacles: Obstacle[] = [];
     let obstacleCounter = 0; // Counter to track when to spawn obstacles (every 2 gate pairs)
@@ -439,8 +476,15 @@ const App = observer(() => {
       magnetPoint.z -= cameraSpeed; // Move forward with camera
 
       // Smooth magnetic point movement based on mouse input (delta time based)
+      // Increase movement speed with level progression
+      const movementSpeedMultiplier = Math.min(
+        1 + ((newLevel - 1) * CONFIG.MAGNETIC_POINT_SPEED_INCREASE_RATE),
+        CONFIG.MAGNETIC_POINT_MAX_MULTIPLIER
+      );
+      const dynamicMaxSpeed = maxSpeed * movementSpeedMultiplier;
+      
       const deltaX = targetX - magnetPoint.x;
-      const moveSpeed = maxSpeed * 60 * deltaTime; // Convert to per-second speed
+      const moveSpeed = dynamicMaxSpeed * 60 * deltaTime; // Convert to per-second speed
       const moveStep = Math.sign(deltaX) * Math.min(Math.abs(deltaX), moveSpeed);
       magnetPoint.x += moveStep;
 
@@ -635,13 +679,26 @@ const App = observer(() => {
             bullets.splice(k, 1);
 
             // Damage the zombie
-            const zombieDied = zombie.takeDamage(1);
+            const zombieDied = zombie.takeDamage(bullet.damage);
             
             if (zombieDied) {
               // Zombie died - remove it and increment score
+              const zombiePosition = zombie.group.position.clone();
               scene.remove(zombie.group);
               zombie.dispose();
               zombies.splice(i, 1);
+              
+              // Drop coin with chance
+              if (Math.random() < CONFIG.COIN_DROP_CHANCE) {
+                const coinPosition = new THREE.Vector3(
+                  zombiePosition.x + (Math.random() - 0.5) * 0.5,
+                  CONFIG.STICK_PERSON_GROUND_Y + 0.1,
+                  zombiePosition.z
+                );
+                const newCoin = new Coin(coinPosition);
+                scene.add(newCoin.mesh);
+                coinsInGame.push(newCoin);
+              }
               
               // Increment score for killing a zombie
               setScore(prevScore => {
@@ -650,6 +707,9 @@ const App = observer(() => {
                 if (updateScore) {
                   updateScore(newScore);
                 }
+                
+                // Automatic upgrades removed - now use coin purchase system
+                
                 return newScore;
               });
               
@@ -784,6 +844,46 @@ const App = observer(() => {
         }
       }
 
+      // Update coins - animate and check for collection
+      for (let i = coinsInGame.length - 1; i >= 0; i--) {
+        const coin = coinsInGame[i];
+        
+        if (coin.isCollected()) {
+          // Remove collected coin
+          scene.remove(coin.mesh);
+          coin.dispose();
+          coinsInGame.splice(i, 1);
+          continue;
+        }
+        
+        // Animate coin
+        coin.animate(deltaTime);
+        
+        // Check collection against all stick people
+        for (let j = 0; j < stickPeople.length; j++) {
+          const stickPerson = stickPeople[j];
+          if (stickPerson && !stickPerson.isFalling && !stickPerson.isDying) {
+            if (coin.checkCollision(stickPerson.getPosition())) {
+              coin.collect();
+              setCoins(prevCoins => prevCoins + 1);
+              
+              // Remove coin from scene
+              scene.remove(coin.mesh);
+              coin.dispose();
+              coinsInGame.splice(i, 1);
+              break;
+            }
+          }
+        }
+        
+        // Clean up coins that are too far behind
+        if (coin.shouldCleanup(camera.position.z)) {
+          scene.remove(coin.mesh);
+          coin.dispose();
+          coinsInGame.splice(i, 1);
+        }
+      }
+
       // Update ALL cubes with proper velocity-based physics
       for (let index = cubes.length - 1; index >= 0; index--) {
         const mobCube = cubes[index];
@@ -794,9 +894,9 @@ const App = observer(() => {
 
           // Handle shooting (auto-shoot)
           if (stickPerson.canShoot()) {
-            const bulletPosition = stickPerson.shoot();
+            const bulletPosition = stickPerson.shoot(weaponUpgrade.getStats());
             if (bulletPosition) {
-              const newBullet = new Bullet(bulletPosition);
+              const newBullet = new Bullet(bulletPosition, weaponUpgrade.getStats());
               scene.add(newBullet.mesh);
               bullets.push(newBullet);
             }
@@ -1012,6 +1112,13 @@ const App = observer(() => {
       obstacles.length = 0;
       obstacleCounter = 0;
 
+      // Clear all coins
+      coinsInGame.forEach((coin) => {
+        scene.remove(coin.mesh);
+        coin.dispose();
+      });
+      coinsInGame.length = 0;
+
       // Clear all challengers and stick people
       while (cubes.length > 0) {
         const removedCube = cubes.pop();
@@ -1099,10 +1206,15 @@ const App = observer(() => {
       // Clear triggered pairs
       triggeredPairs.clear();
       
+      // Reset weapon upgrade message and menu (but NOT upgrades - they persist)
+      setWeaponUpgradeMessage("");
+      setShowUpgradeMenu(false);
+      
       // Reset score, level, and game time
       setScore(0);
       setCurrentLevel(1);
       setGameStartTime(0);
+      // NOTE: Coins are NOT reset - they persist between games
       gameTimeSeconds = 0;
       lastFrameTime = performance.now();
       
@@ -1188,6 +1300,28 @@ const App = observer(() => {
         <div className="text-xl font-bold">Challengers: {mobCount}</div>
         <div className="text-lg font-semibold text-yellow-400">Score: {score}</div>
         <div className="text-md font-medium text-blue-400">Level: {currentLevel}</div>
+        <div className="text-md font-medium text-yellow-600">Coins: {coins}</div>
+        
+        {/* Weapon Stats */}
+        <div className="mt-2 text-sm">
+          <div className="text-orange-400 font-medium">Weapon Stats:</div>
+          <div className="text-xs text-gray-300 space-y-1">
+            <div>Damage: {weaponStats.damage}</div>
+            <div>Velocity: {weaponStats.bulletVelocity.toFixed(2)}</div>
+            <div>Rate: {(60 / weaponStats.rateOfFire).toFixed(1)}/s</div>
+          </div>
+        </div>
+        
+        {/* Movement Speed Display */}
+        <div className="mt-2 text-sm">
+          <div className="text-green-400 font-medium">Movement:</div>
+          <div className="text-xs text-gray-300">
+            Speed: {Math.min(
+              1 + ((currentLevel - 1) * CONFIG.MAGNETIC_POINT_SPEED_INCREASE_RATE),
+              CONFIG.MAGNETIC_POINT_MAX_MULTIPLIER
+            ).toFixed(1)}x
+          </div>
+        </div>
       </div>
 
       {/* Status Display */}
@@ -1256,6 +1390,11 @@ const App = observer(() => {
           {multiplayerMessage && (
             <div className="text-xs text-gray-300 mt-1 max-w-48 truncate">
               {multiplayerMessage}
+            </div>
+          )}
+          {weaponUpgradeMessage && (
+            <div className="text-xs text-orange-400 mt-1 font-bold animate-pulse">
+              {weaponUpgradeMessage}
             </div>
           )}
         </div>
@@ -1377,17 +1516,101 @@ const App = observer(() => {
 
       {gameOver && (
         <div className="absolute inset-0 bg-black/75 flex items-center justify-center">
-          <div className="bg-white rounded-lg p-8 text-center">
+          <div className="bg-white rounded-lg p-8 text-center max-w-md w-full mx-4">
             <h2 className="text-4xl font-bold text-red-600 mb-4">Game Over!</h2>
-            <p className="text-xl text-gray-700 mb-6">
+            <p className="text-xl text-gray-700 mb-2">
               All your challengers were eliminated!
             </p>
-            <button
-              onClick={() => (window as any).restartGame?.()}
-              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-            >
-              Restart Game
-            </button>
+            <p className="text-lg text-gray-600 mb-6">
+              Final Score: {score} | Coins: {coins}
+            </p>
+            
+            <div className="flex gap-4 justify-center">
+              <button
+                onClick={() => setShowUpgradeMenu(!showUpgradeMenu)}
+                className="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded"
+              >
+                {showUpgradeMenu ? "Hide" : "Show"} Upgrades
+              </button>
+              <button
+                onClick={() => {
+                  setShowUpgradeMenu(false);
+                  (window as any).restartGame?.();
+                }}
+                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+              >
+                Restart Game
+              </button>
+            </div>
+            
+            {showUpgradeMenu && (
+              <div className="mt-6 text-left">
+                <h3 className="text-xl font-bold text-gray-800 mb-4">Weapon Upgrades</h3>
+                <div className="space-y-3">
+                  {weaponUpgradeRef.current?.getUpgradeInfo().map((upgrade, index) => {
+                    const upgradeTypes: ('damage' | 'bulletVelocity' | 'rateOfFire')[] = ['damage', 'bulletVelocity', 'rateOfFire'];
+                    const upgradeType = upgradeTypes[index];
+                    const canPurchase = weaponUpgradeRef.current?.canPurchaseUpgrade(upgradeType, coins) || false;
+                    
+                    return (
+                      <div key={upgrade.name} className="border rounded p-3 bg-gray-50">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <h4 className="font-semibold text-gray-800">{upgrade.name}</h4>
+                            <p className="text-sm text-gray-600">{upgrade.description}</p>
+                            <p className="text-xs text-gray-500">
+                              Level {upgrade.currentLevel}/{upgrade.maxLevel}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-bold text-yellow-600">
+                              {upgrade.cost} coins
+                            </p>
+                            <button
+                              onClick={() => {
+                                if (weaponUpgradeRef.current) {
+                                  const result = weaponUpgradeRef.current.purchaseUpgrade(upgradeType, coins);
+                                  if (result.success) {
+                                    setCoins(result.newCoinCount);
+                                    setWeaponStats(weaponUpgradeRef.current.getStats());
+                                  }
+                                }
+                              }}
+                              disabled={!canPurchase}
+                              className={`mt-1 px-3 py-1 rounded text-sm font-semibold ${
+                                canPurchase
+                                  ? 'bg-green-500 hover:bg-green-700 text-white'
+                                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                              }`}
+                            >
+                              {upgrade.currentLevel >= upgrade.maxLevel ? 'MAX' : 'Buy'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }) || []}
+                </div>
+                
+                {/* Reset All Upgrades Button */}
+                <div className="mt-4 pt-3 border-t">
+                  <button
+                    onClick={() => {
+                      if (confirm('Are you sure you want to reset all weapon upgrades? This cannot be undone.')) {
+                        if (weaponUpgradeRef.current) {
+                          weaponUpgradeRef.current.reset();
+                          weaponUpgradeRef.current.saveToLocalStorage();
+                          setWeaponStats(weaponUpgradeRef.current.getStats());
+                        }
+                      }
+                    }}
+                    className="w-full bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded text-sm"
+                  >
+                    Reset All Upgrades
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
