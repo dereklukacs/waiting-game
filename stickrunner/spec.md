@@ -14,3 +14,5 @@ Tech stack:
 - three js for canvas rendering
 - mobx for state management
 - typescript
+
+- lucide icons

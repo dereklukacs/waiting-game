@@ -1,6 +1,7 @@
 import { observer } from "mobx-react-lite";
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
+import { Edit3, Check, X } from "lucide-react";
 import { CONFIG } from "./config";
 import { StickPerson } from "./StickPerson";
 import { Zombie } from "./Zombie";
@@ -14,6 +15,10 @@ const App = observer(() => {
   const [gameOver, setGameOver] = useState(false);
   const [forceStarted, setForceStarted] = useState(false);
   const forceStartedRef = useRef(forceStarted);
+  const [username, setUsername] = useState<string>('');
+  const [showUsernameModal, setShowUsernameModal] = useState(false);
+  const [usernameInput, setUsernameInput] = useState('');
+  const [editingUsername, setEditingUsername] = useState(false);
 
   // Get server port from URL params (default to 3001)
   const urlParams = new URLSearchParams(window.location.search);
@@ -41,6 +46,41 @@ const App = observer(() => {
   useEffect(() => {
     forceStartedRef.current = forceStarted;
   }, [forceStarted]);
+
+  // Check for existing username on mount
+  useEffect(() => {
+    const savedUsername = localStorage.getItem('stickrunner-username');
+    if (savedUsername) {
+      setUsername(savedUsername);
+    } else {
+      setShowUsernameModal(true);
+    }
+  }, []);
+
+  // Handle username submission
+  const handleUsernameSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (usernameInput.trim()) {
+      const cleanUsername = usernameInput.trim();
+      setUsername(cleanUsername);
+      localStorage.setItem('stickrunner-username', cleanUsername);
+      setShowUsernameModal(false);
+      setEditingUsername(false);
+      setUsernameInput('');
+    }
+  };
+
+  // Handle username edit
+  const startEditingUsername = () => {
+    setUsernameInput(username);
+    setEditingUsername(true);
+  };
+
+  const cancelEditingUsername = () => {
+    setUsernameInput('');
+    setEditingUsername(false);
+  };
+
 
   useEffect(() => {
     if (!mountRef.current) return;
@@ -962,8 +1002,46 @@ const App = observer(() => {
   return (
     <div className="relative w-full h-screen">
       <div ref={mountRef} className="w-full h-screen" />
-      <div className="absolute top-4 left-4 bg-black/50  text-white px-4 py-2 rounded-lg text-xl font-bold">
-        Challengers: {mobCount}
+      <div className="absolute top-4 left-4 bg-black/50 text-white px-4 py-2 rounded-lg">
+        {editingUsername ? (
+          <div className="flex items-center gap-2 mb-2">
+            <input
+              type="text"
+              value={usernameInput}
+              onChange={(e) => setUsernameInput(e.target.value)}
+              className="text-sm px-2 py-1 rounded text-black focus:outline-none focus:ring-1 focus:ring-blue-500"
+              maxLength={20}
+              autoFocus
+              onKeyDown={(e) => e.key === 'Escape' && cancelEditingUsername()}
+            />
+            <button
+              type="button"
+              onClick={handleUsernameSubmit}
+              className="text-green-400 hover:text-green-300 transition-colors"
+              title="Save"
+            >
+              <Check size={16} />
+            </button>
+            <button
+              type="button"
+              onClick={cancelEditingUsername}
+              className="text-red-400 hover:text-red-300 transition-colors"
+              title="Cancel"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        ) : (
+          <div 
+            className="flex items-center gap-1 text-sm font-semibold text-gray-300 cursor-pointer hover:text-white transition-colors mb-1"
+            onClick={startEditingUsername}
+            title="Click to edit username"
+          >
+            <span>{username}</span>
+            <Edit3 size={14} />
+          </div>
+        )}
+        <div className="text-xl font-bold">Challengers: {mobCount}</div>
       </div>
 
       {/* Claude Status Display */}
@@ -1036,6 +1114,34 @@ const App = observer(() => {
             </div>
           </div>
         )}
+
+      {/* Username Modal */}
+      {showUsernameModal && (
+        <div className="absolute inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 text-center max-w-md mx-4">
+            <h2 className="text-3xl font-bold text-gray-800 mb-4">Welcome to Stick Runner!</h2>
+            <p className="text-gray-600 mb-6">Choose a username to get started:</p>
+            <form onSubmit={handleUsernameSubmit} className="space-y-4">
+              <input
+                type="text"
+                value={usernameInput}
+                onChange={(e) => setUsernameInput(e.target.value)}
+                placeholder="Enter your username"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                maxLength={20}
+                autoFocus
+              />
+              <button
+                type="submit"
+                className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-colors"
+                disabled={!usernameInput.trim()}
+              >
+                Start Playing
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {gameOver && (
         <div className="absolute inset-0 bg-black/75 flex items-center justify-center">

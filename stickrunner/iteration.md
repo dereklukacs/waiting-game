@@ -83,3 +83,7 @@ the obstacles should remove stick people who touch them
 let's have the instructions of how to play in the lower left corner
 
 let's stop referring to things as cubes. Let's call them challengers
+
+I want to set a username, this should be set on first visiting the page and cached in localstorage
+
+I want to be able to edit the username
