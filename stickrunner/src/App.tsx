@@ -30,7 +30,6 @@ const App = observer(() => {
   const [score, setScore] = useState<number>(0);
   const [liveLeaderboard, setLiveLeaderboard] = useState<Array<{username: string, score: number}>>([]);
   const [allTimeLeaderboard, setAllTimeLeaderboard] = useState<Array<{username: string, score: number}>>([]);
-  const [gameStartTime, setGameStartTime] = useState<number>(0);
   const [currentLevel, setCurrentLevel] = useState<number>(1);
   const [weaponStats, setWeaponStats] = useState({ damage: CONFIG.BULLET_BASE_DAMAGE, bulletVelocity: CONFIG.BULLET_SPEED, rateOfFire: CONFIG.BULLET_RATE });
   const [weaponUpgradeMessage, setWeaponUpgradeMessage] = useState<string>("");
@@ -167,9 +166,6 @@ const App = observer(() => {
 
   useEffect(() => {
     if (!mountRef.current) return;
-
-    // Initialize game start time
-    setGameStartTime(0);
 
     // Clear any existing content
     mountRef.current.innerHTML = "";
@@ -1213,7 +1209,6 @@ const App = observer(() => {
       // Reset score, level, and game time
       setScore(0);
       setCurrentLevel(1);
-      setGameStartTime(0);
       // NOTE: Coins are NOT reset - they persist between games
       gameTimeSeconds = 0;
       lastFrameTime = performance.now();
