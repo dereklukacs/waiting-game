@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 
 interface ClaudeStatus {
-  state: 'idle' | 'working' | 'tool-executing';
+  state: 'idle' | 'working' | 'tool-executing' | 'waiting-permission';
   lastUpdate: number;
   timestamp: number;
 }

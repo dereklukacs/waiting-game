@@ -36,6 +36,17 @@ const HOOK_CONFIG = {
           }
         ]
       }
+    ],
+    "Notification": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s -X POST http://localhost:3001/hooks/permission-request || true"
+          }
+        ]
+      }
     ]
   }
 };
@@ -105,6 +116,7 @@ async function removeHooks() {
       delete existingSettings.hooks.PreToolUse;
       delete existingSettings.hooks.PostToolUse;
       delete existingSettings.hooks.Stop;
+      delete existingSettings.hooks.Notification;
       
       if (Object.keys(existingSettings.hooks).length === 0) {
         delete existingSettings.hooks;

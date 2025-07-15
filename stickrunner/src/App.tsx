@@ -4,6 +4,7 @@ import * as THREE from "three";
 import { CONFIG } from "./config";
 import { StickPerson } from "./StickPerson";
 import { Zombie } from "./Zombie";
+import { Bullet } from "./Bullet";
 import { useClaudeStatus } from "./hooks/useClaudeStatus";
 
 const App = observer(() => {
@@ -148,6 +149,9 @@ const App = observer(() => {
     // Zombie system
     const zombies: Zombie[] = [];
     
+    // Bullet system
+    const bullets: Bullet[] = [];
+    
     // Gate pair tracking
     const triggeredPairs = new Set<string>();
     
@@ -277,7 +281,7 @@ const App = observer(() => {
       if (!gameRunning) return; // Stop animation if game over
       
       // Check if game should be paused based on Claude status (use ref for current value)
-      gamePaused = claudeStatusRef.current?.state === 'idle';
+      gamePaused = claudeStatusRef.current?.state === 'idle' || claudeStatusRef.current?.state === 'waiting-permission';
       
       if (gamePaused) {
         // If paused, keep checking for unpause
@@ -425,6 +429,29 @@ const App = observer(() => {
         // Move zombie toward camera (but slower than camera speed)
         zombie.group.position.z += CONFIG.ZOMBIE_SPEED;
         
+        // Check bullet collisions with this zombie
+        let zombieHit = false;
+        for (let k = bullets.length - 1; k >= 0; k--) {
+          const bullet = bullets[k];
+          const bulletDistance = bullet.getPosition().distanceTo(zombie.getPosition());
+          
+          if (bulletDistance < CONFIG.BULLET_DAMAGE_DISTANCE) {
+            // Bullet hit zombie - remove both
+            scene.remove(bullet.mesh);
+            bullet.dispose();
+            bullets.splice(k, 1);
+            
+            scene.remove(zombie.group);
+            zombie.dispose();
+            zombies.splice(i, 1);
+            zombieHit = true;
+            break;
+          }
+        }
+        
+        // Skip collision check if zombie was destroyed by bullet
+        if (zombieHit) continue;
+        
         // Check collisions with stick people
         for (let j = stickPeople.length - 1; j >= 0; j--) {
           const stickPerson = stickPeople[j];
@@ -469,6 +496,21 @@ const App = observer(() => {
         }
       }
       
+      // Update bullets
+      for (let i = bullets.length - 1; i >= 0; i--) {
+        const bullet = bullets[i];
+        
+        // Update bullet position and check if it should be removed
+        const stillActive = bullet.update();
+        
+        if (!stillActive) {
+          // Remove bullet that has traveled too far
+          scene.remove(bullet.mesh);
+          bullet.dispose();
+          bullets.splice(i, 1);
+        }
+      }
+      
       // Update ALL cubes with proper velocity-based physics
       for (let index = cubes.length - 1; index >= 0; index--) {
         const mobCube = cubes[index];
@@ -476,6 +518,16 @@ const App = observer(() => {
         const stickPerson = stickPeople[index];
         if (stickPerson) {
           stickPerson.animate(0.016); // Assuming ~60fps
+          
+          // Handle shooting
+          if (stickPerson.canShoot()) {
+            const bulletPosition = stickPerson.shoot();
+            if (bulletPosition) {
+              const newBullet = new Bullet(bulletPosition);
+              scene.add(newBullet.mesh);
+              bullets.push(newBullet);
+            }
+          }
           
           // Check if stick person has fallen off the road
           if (!stickPerson.isFalling && (mobCube.position.x < CONFIG.ROAD_BOUNDARY_LEFT || mobCube.position.x > CONFIG.ROAD_BOUNDARY_RIGHT)) {
@@ -636,6 +688,13 @@ const App = observer(() => {
       });
       zombies.length = 0;
       
+      // Clear all bullets
+      bullets.forEach(bullet => {
+        scene.remove(bullet.mesh);
+        bullet.dispose();
+      });
+      bullets.length = 0;
+      
       // Clear all cubes and stick people
       while (cubes.length > 0) {
         const removedCube = cubes.pop();
@@ -728,10 +787,13 @@ const App = observer(() => {
               claudeStatus?.state === 'idle' ? 'bg-green-500' :
               claudeStatus?.state === 'working' ? 'bg-yellow-500' :
               claudeStatus?.state === 'tool-executing' ? 'bg-red-500' :
+              claudeStatus?.state === 'waiting-permission' ? 'bg-blue-500' :
               'bg-gray-500'
             }`}></div>
             <span className="text-sm capitalize">
-              {claudeStatus?.state === 'tool-executing' ? 'Tool Running' : claudeStatus?.state || 'Unknown'}
+              {claudeStatus?.state === 'tool-executing' ? 'Tool Running' :
+               claudeStatus?.state === 'waiting-permission' ? 'Waiting Permission' :
+               claudeStatus?.state || 'Unknown'}
             </span>
           </div>
         ) : (
@@ -745,11 +807,20 @@ const App = observer(() => {
       </div>
 
       {/* Game Paused Overlay */}
-      {claudeStatus?.state === 'idle' && (
+      {(claudeStatus?.state === 'idle' || claudeStatus?.state === 'waiting-permission') && (
         <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center pointer-events-none">
           <div className="bg-white rounded-lg p-6 text-center shadow-lg">
-            <h2 className="text-2xl font-bold text-green-600 mb-2">Game Paused</h2>
-            <p className="text-gray-700">Claude is idle - ask Claude something to resume!</p>
+            {claudeStatus?.state === 'idle' ? (
+              <>
+                <h2 className="text-2xl font-bold text-green-600 mb-2">Game Paused</h2>
+                <p className="text-gray-700">Claude is idle - ask Claude something to resume!</p>
+              </>
+            ) : (
+              <>
+                <h2 className="text-2xl font-bold text-blue-600 mb-2">Game Paused</h2>
+                <p className="text-gray-700">Claude needs permission - check your terminal!</p>
+              </>
+            )}
           </div>
         </div>
       )}

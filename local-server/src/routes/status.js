@@ -53,6 +53,17 @@ function createStatusRoutes(statusManager) {
     }
   });
 
+  router.post('/hooks/permission-request', (req, res) => {
+    try {
+      console.log('[Hook] Claude is waiting for permission');
+      statusManager.markWaitingForPermission();
+      res.json({ success: true });
+    } catch (error) {
+      console.error('[Hook] Error handling permission-request:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
   return router;
 }
 

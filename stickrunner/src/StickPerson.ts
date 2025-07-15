@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { CONFIG } from './config';
 
 export class StickPerson {
   public group: THREE.Group;
@@ -11,6 +12,7 @@ export class StickPerson {
   public isFalling: boolean = false;
   private fallVelocity: number = 0;
   private fallRotationVelocity: number = 0;
+  private shootCooldown: number = 0;
 
   constructor() {
     this.group = new THREE.Group();
@@ -93,6 +95,11 @@ export class StickPerson {
   }
   
   public animate(deltaTime: number) {
+    // Update shoot cooldown
+    if (this.shootCooldown > 0) {
+      this.shootCooldown--;
+    }
+    
     if (this.isFalling) {
       // Falling animation
       this.fallVelocity += 0.01; // Gravity acceleration
@@ -129,6 +136,23 @@ export class StickPerson {
       const bobHeight = Math.abs(Math.sin(this.animationTime * 2)) * 0.05;
       this.group.position.y = -0.3 + bobHeight;
     }
+  }
+
+  public canShoot(): boolean {
+    return !this.isFalling && this.shootCooldown <= 0;
+  }
+
+  public shoot(): THREE.Vector3 | null {
+    if (!this.canShoot()) return null;
+    
+    this.shootCooldown = CONFIG.BULLET_RATE;
+    
+    // Return bullet spawn position (slightly in front of stick person)
+    return new THREE.Vector3(
+      this.group.position.x,
+      this.group.position.y + 0.1, // Slightly above ground
+      this.group.position.z - 0.2  // Slightly in front
+    );
   }
   
   public setPosition(x: number, _y: number, z: number) {

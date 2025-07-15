@@ -24,6 +24,13 @@ export const CONFIG = {
   ZOMBIE_COLLISION_DISTANCE: 0.5, // How close zombies need to be to "catch" stick people
   ZOMBIE_CLEANUP_DISTANCE: 15, // Remove zombies this far behind camera
 
+  // Bullet Properties
+  BULLET_SPEED: 0.3, // Forward speed of bullets
+  BULLET_SIZE: 0.05, // Size of bullet spheres
+  BULLET_RATE: 30, // Frames between shots (30 frames = ~0.5 seconds at 60fps)
+  BULLET_RANGE: 50, // Maximum distance bullets travel
+  BULLET_DAMAGE_DISTANCE: 0.3, // How close bullets need to be to hit zombies
+
   // Physics
   ATTRACTION_STRENGTH: 0.022, // Slightly reduced attraction
   ATTRACTION_MIN_DISTANCE: 0.3, // Slightly larger dead zone
@@ -93,6 +100,7 @@ export const CONFIG = {
     STARS: 0xffffff, // White
     BACKGROUND: 0x001155, // Lighter dark blue background
     ZOMBIE: 0xcc0000, // Brighter dark red
+    BULLET: 0xffff00, // Yellow bullets
   },
 
   // Mouse Controls

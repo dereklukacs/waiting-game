@@ -59,6 +59,10 @@ class StatusManager {
     this.setState('tool-executing');
   }
 
+  markWaitingForPermission() {
+    this.setState('waiting-permission');
+  }
+
   startIdleTimer() {
     // Clear existing timer
     if (this.idleTimeout) {
