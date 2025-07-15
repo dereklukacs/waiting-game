@@ -28,21 +28,35 @@ const App = observer(() => {
   const [onlinePlayerCount, setOnlinePlayerCount] = useState<number>(0);
   const [deviceId, setDeviceId] = useState<string>("");
   const [score, setScore] = useState<number>(0);
-  const [liveLeaderboard, setLiveLeaderboard] = useState<Array<{username: string, score: number}>>([]);
-  const [allTimeLeaderboard, setAllTimeLeaderboard] = useState<Array<{username: string, score: number}>>([]);
+  const [liveLeaderboard, setLiveLeaderboard] = useState<
+    Array<{ username: string; score: number }>
+  >([]);
+  const [allTimeLeaderboard, setAllTimeLeaderboard] = useState<
+    Array<{ username: string; score: number }>
+  >([]);
   const [currentLevel, setCurrentLevel] = useState<number>(1);
-  const [weaponStats, setWeaponStats] = useState({ damage: CONFIG.BULLET_BASE_DAMAGE, bulletVelocity: CONFIG.BULLET_SPEED, rateOfFire: CONFIG.BULLET_RATE });
+  const [weaponStats, setWeaponStats] = useState({
+    damage: CONFIG.BULLET_BASE_DAMAGE,
+    bulletVelocity: CONFIG.BULLET_SPEED,
+    rateOfFire: CONFIG.BULLET_RATE,
+  });
   const [weaponUpgradeMessage, setWeaponUpgradeMessage] = useState<string>("");
   const [coins, setCoins] = useState<number>(() => {
     const savedCoins = localStorage.getItem("stickrunner-coins");
     const coinCount = savedCoins ? parseInt(savedCoins) || 0 : 0;
-    console.log("Loading coins on mount:", coinCount, "from localStorage:", savedCoins);
+    console.log(
+      "Loading coins on mount:",
+      coinCount,
+      "from localStorage:",
+      savedCoins
+    );
     return coinCount;
   });
   const [showUpgradeMenu, setShowUpgradeMenu] = useState<boolean>(false);
   const weaponUpgradeRef = useRef<WeaponUpgrade | null>(null);
   const isFirstRender = useRef<boolean>(true);
-  const [showClaudeInstructions, setShowClaudeInstructions] = useState<boolean>(false);
+  const [showClaudeInstructions, setShowClaudeInstructions] =
+    useState<boolean>(false);
 
   // Get server port from URL params (default to 3001)
   const urlParams = new URLSearchParams(window.location.search);
@@ -126,13 +140,15 @@ const App = observer(() => {
       localStorage.setItem("stickrunner-device-id", savedDeviceId);
     }
     setDeviceId(savedDeviceId);
-    
+
     // Check if Claude integration instructions have been shown
-    const claudeInstructionsShown = localStorage.getItem("stickrunner-claude-instructions-shown");
+    const claudeInstructionsShown = localStorage.getItem(
+      "stickrunner-claude-instructions-shown"
+    );
     if (!claudeInstructionsShown) {
       setShowClaudeInstructions(true);
     }
-    
+
     // Coins are now loaded directly in useState initializer
   }, []);
 
@@ -228,7 +244,7 @@ const App = observer(() => {
     });
     const starsVertices: number[] = [];
     const starPositions: { x: number; y: number; z: number }[] = [];
-    
+
     // Generate initial stars
     for (let i = 0; i < CONFIG.STAR_COUNT; i++) {
       const x = CONFIG.RNG.starPosition();
@@ -237,7 +253,7 @@ const App = observer(() => {
       starsVertices.push(x, y, z);
       starPositions.push({ x, y, z });
     }
-    
+
     starsGeometry.setAttribute(
       "position",
       new THREE.Float32BufferAttribute(starsVertices, 3)
@@ -252,7 +268,7 @@ const App = observer(() => {
     const roadLineSegments: THREE.Mesh[] = [];
     const roadSegmentLength = 100; // Length of each road segment
     let nextRoadSegmentZ = 0; // Z position for next road segment
-    
+
     // Create road materials
     const roadMaterial = new THREE.MeshLambertMaterial({
       color: CONFIG.COLORS.ROAD,
@@ -260,10 +276,13 @@ const App = observer(() => {
     const lineMaterial = new THREE.MeshBasicMaterial({
       color: CONFIG.COLORS.ROAD_LINES,
     });
-    
+
     const createRoadSegment = (zPosition: number) => {
       // Create road segment
-      const roadGeometry = new THREE.PlaneGeometry(CONFIG.ROAD_WIDTH, roadSegmentLength);
+      const roadGeometry = new THREE.PlaneGeometry(
+        CONFIG.ROAD_WIDTH,
+        roadSegmentLength
+      );
       const roadSegment = new THREE.Mesh(roadGeometry, roadMaterial);
       roadSegment.rotation.x = -Math.PI / 2;
       roadSegment.position.y = CONFIG.ROAD_POSITION_Y;
@@ -271,10 +290,13 @@ const App = observer(() => {
       roadSegment.receiveShadow = true;
       scene.add(roadSegment);
       roadSegments.push(roadSegment);
-      
+
       // Create road lines for this segment
-      const lineGeometry = new THREE.PlaneGeometry(CONFIG.ROAD_LINE_WIDTH, roadSegmentLength);
-      
+      const lineGeometry = new THREE.PlaneGeometry(
+        CONFIG.ROAD_LINE_WIDTH,
+        roadSegmentLength
+      );
+
       // Center line
       const centerLine = new THREE.Mesh(lineGeometry, lineMaterial);
       centerLine.rotation.x = -Math.PI / 2;
@@ -282,7 +304,7 @@ const App = observer(() => {
       centerLine.position.z = zPosition;
       scene.add(centerLine);
       roadLineSegments.push(centerLine);
-      
+
       // Left line
       const leftLine = new THREE.Mesh(lineGeometry, lineMaterial);
       leftLine.rotation.x = -Math.PI / 2;
@@ -291,7 +313,7 @@ const App = observer(() => {
       leftLine.position.z = zPosition;
       scene.add(leftLine);
       roadLineSegments.push(leftLine);
-      
+
       // Right line
       const rightLine = new THREE.Mesh(lineGeometry, lineMaterial);
       rightLine.rotation.x = -Math.PI / 2;
@@ -301,7 +323,7 @@ const App = observer(() => {
       scene.add(rightLine);
       roadLineSegments.push(rightLine);
     };
-    
+
     // Generate initial road segments
     for (let i = 0; i < 20; i++) {
       createRoadSegment(nextRoadSegmentZ);
@@ -351,7 +373,7 @@ const App = observer(() => {
     const weaponUpgrade = new WeaponUpgrade();
     weaponUpgrade.loadFromLocalStorage(); // Load saved upgrades
     weaponUpgradeRef.current = weaponUpgrade;
-    
+
     // Update weapon stats state to reflect loaded upgrades
     setWeaponStats(weaponUpgrade.getStats());
 
@@ -375,8 +397,8 @@ const App = observer(() => {
 
     const createGatePair = (zPosition: number) => {
       const gatePair = gateFactory.createGatePair(zPosition, currentLevel);
-      
-      gatePair.forEach(gate => {
+
+      gatePair.forEach((gate) => {
         scene.add(gate.group);
         gates.push(gate);
       });
@@ -460,20 +482,21 @@ const App = observer(() => {
       // Calculate current level based on game time (20 second intervals)
       const gameTime20Seconds = gameTimeSeconds / 20;
       const newLevel = Math.floor(gameTime20Seconds) + 1;
-      
+
       // Update level if it changed
       if (newLevel !== currentLevel) {
         setCurrentLevel(newLevel);
       }
-      
+
       // Calculate speed multiplier based on level
       const speedMultiplier = Math.min(
-        1 + ((newLevel - 1) * CONFIG.SPEED_INCREASE_RATE),
+        1 + (newLevel - 1) * CONFIG.SPEED_INCREASE_RATE,
         CONFIG.MAX_SPEED_MULTIPLIER
       );
 
       // Move camera forward along the road (delta time based with speed multiplier)
-      const cameraSpeed = CONFIG.CAMERA_SPEED * 60 * deltaTime * speedMultiplier;
+      const cameraSpeed =
+        CONFIG.CAMERA_SPEED * 60 * deltaTime * speedMultiplier;
       camera.position.z -= cameraSpeed;
       camera.lookAt(
         0,
@@ -487,14 +510,15 @@ const App = observer(() => {
       // Smooth magnetic point movement based on mouse input (delta time based)
       // Increase movement speed with level progression
       const movementSpeedMultiplier = Math.min(
-        1 + ((newLevel - 1) * CONFIG.MAGNETIC_POINT_SPEED_INCREASE_RATE),
+        1 + (newLevel - 1) * CONFIG.MAGNETIC_POINT_SPEED_INCREASE_RATE,
         CONFIG.MAGNETIC_POINT_MAX_MULTIPLIER
       );
       const dynamicMaxSpeed = maxSpeed * movementSpeedMultiplier;
-      
+
       const deltaX = targetX - magnetPoint.x;
       const moveSpeed = dynamicMaxSpeed * 60 * deltaTime; // Convert to per-second speed
-      const moveStep = Math.sign(deltaX) * Math.min(Math.abs(deltaX), moveSpeed);
+      const moveStep =
+        Math.sign(deltaX) * Math.min(Math.abs(deltaX), moveSpeed);
       magnetPoint.x += moveStep;
 
       // Procedural road generation - generate new segments ahead
@@ -526,23 +550,26 @@ const App = observer(() => {
       }
 
       // Procedural star generation - move stars that are behind camera to the front
-      const starsPositionAttribute = starsGeometry.getAttribute('position');
+      const starsPositionAttribute = starsGeometry.getAttribute("position");
       let starsUpdated = false;
-      
+
       for (let i = 0; i < starPositions.length; i++) {
         const star = starPositions[i];
         if (star.z > camera.position.z + 100) {
           // Move star to front of camera
-          star.z = camera.position.z - CONFIG.STAR_SPREAD / 2 - Math.random() * CONFIG.STAR_SPREAD / 2;
+          star.z =
+            camera.position.z -
+            CONFIG.STAR_SPREAD / 2 -
+            (Math.random() * CONFIG.STAR_SPREAD) / 2;
           star.x = CONFIG.RNG.starPosition();
           star.y = CONFIG.RNG.starPosition();
-          
+
           // Update vertex buffer
           starsPositionAttribute.setXYZ(i, star.x, star.y, star.z);
           starsUpdated = true;
         }
       }
-      
+
       if (starsUpdated) {
         starsPositionAttribute.needsUpdate = true;
       }
@@ -570,19 +597,23 @@ const App = observer(() => {
       }
 
       // Spawn zombies with increasing difficulty based on level
-      const spawnRateMultiplier = 1 + ((newLevel - 1) * CONFIG.ZOMBIE_SPAWN_RATE_INCREASE);
+      const spawnRateMultiplier =
+        1 + (newLevel - 1) * CONFIG.ZOMBIE_SPAWN_RATE_INCREASE;
       const currentSpawnRate = CONFIG.ZOMBIE_SPAWN_RATE * spawnRateMultiplier;
-      
+
       // Linear health progression: mix of different health levels for smooth difficulty
-      const baseHealthFloat = CONFIG.ZOMBIE_BASE_HEALTH + ((newLevel - 1) * CONFIG.ZOMBIE_HEALTH_INCREASE_RATE);
+      const baseHealthFloat =
+        CONFIG.ZOMBIE_BASE_HEALTH +
+        (newLevel - 1) * CONFIG.ZOMBIE_HEALTH_INCREASE_RATE;
       const baseHealthInt = Math.floor(baseHealthFloat);
       const healthFraction = baseHealthFloat - baseHealthInt;
-      
+
       // Probabilistically choose between current and next health level for smooth progression
-      const zombieHealth = Math.max(1, 
+      const zombieHealth = Math.max(
+        1,
         Math.random() < healthFraction ? baseHealthInt + 1 : baseHealthInt
       );
-      
+
       if (Math.random() < currentSpawnRate) {
         const newZombie = new Zombie(zombieHealth);
         newZombie.setPosition(
@@ -622,20 +653,24 @@ const App = observer(() => {
               );
 
               currentMobCount += result.mobCountChange;
-              
+
               if (result.shouldRemove) {
                 // Handle dying stick person for death animation
                 const stickPerson = stickPeople[cubeIndex];
-                if (stickPerson && !stickPerson.isDying && !stickPerson.isFalling) {
+                if (
+                  stickPerson &&
+                  !stickPerson.isDying &&
+                  !stickPerson.isFalling
+                ) {
                   stickPerson.startDying();
                   dyingStickPeople.push(stickPerson);
                 }
-                
+
                 cubes.splice(cubeIndex, 1);
                 cubeVelocities.splice(cubeIndex, 1);
                 stickPeople.splice(cubeIndex, 1);
               }
-              
+
               setMobCount(currentMobCount);
 
               // Check for game over
@@ -648,7 +683,10 @@ const App = observer(() => {
         }
 
         // Remove gates that are far behind and clean up triggered pairs
-        if (gate.group.position.z > camera.position.z + CONFIG.GATE_CLEANUP_DISTANCE) {
+        if (
+          gate.group.position.z >
+          camera.position.z + CONFIG.GATE_CLEANUP_DISTANCE
+        ) {
           // Clean up all triggered pairs for this gate
           const keysToDelete = Array.from(triggeredPairs).filter((key) =>
             key.toString().startsWith(gate.pairId.toString())
@@ -669,7 +707,8 @@ const App = observer(() => {
         zombie.animate(deltaTime * speedMultiplier);
 
         // Move zombie toward camera (but slower than camera speed) with speed multiplier
-        const zombieSpeed = CONFIG.ZOMBIE_SPEED * 60 * deltaTime * speedMultiplier;
+        const zombieSpeed =
+          CONFIG.ZOMBIE_SPEED * 60 * deltaTime * speedMultiplier;
         zombie.group.position.z += zombieSpeed;
 
         // Check bullet collisions with this zombie
@@ -682,21 +721,25 @@ const App = observer(() => {
 
           if (bulletDistance < CONFIG.BULLET_DAMAGE_DISTANCE) {
             // Bullet hit zombie - damage it
-            console.log(`Zombie hit! Distance: ${bulletDistance.toFixed(2)}, Health: ${zombie.health}`);
+            console.log(
+              `Zombie hit! Distance: ${bulletDistance.toFixed(2)}, Health: ${
+                zombie.health
+              }`
+            );
             scene.remove(bullet.mesh);
             bullet.dispose();
             bullets.splice(k, 1);
 
             // Damage the zombie
             const zombieDied = zombie.takeDamage(bullet.damage);
-            
+
             if (zombieDied) {
               // Zombie died - remove it and increment score
               const zombiePosition = zombie.group.position.clone();
               scene.remove(zombie.group);
               zombie.dispose();
               zombies.splice(i, 1);
-              
+
               // Drop coin with chance
               if (Math.random() < CONFIG.COIN_DROP_CHANCE) {
                 const coinPosition = new THREE.Vector3(
@@ -708,20 +751,20 @@ const App = observer(() => {
                 scene.add(newCoin.mesh);
                 coinsInGame.push(newCoin);
               }
-              
+
               // Increment score for killing a zombie
-              setScore(prevScore => {
+              setScore((prevScore) => {
                 const newScore = prevScore + 1;
                 // Send score update to server
                 if (updateScore) {
                   updateScore(newScore);
                 }
-                
+
                 // Automatic upgrades removed - now use coin purchase system
-                
+
                 return newScore;
               });
-              
+
               zombieHit = true;
             }
             break;
@@ -757,7 +800,7 @@ const App = observer(() => {
               cubes.splice(j, 1);
               cubeVelocities.splice(j, 1);
             }
-            
+
             // Remove stick person from array
             stickPeople.splice(j, 1);
 
@@ -811,7 +854,7 @@ const App = observer(() => {
               cubes.splice(j, 1);
               cubeVelocities.splice(j, 1);
             }
-            
+
             // Remove stick person from array
             stickPeople.splice(j, 1);
 
@@ -856,7 +899,7 @@ const App = observer(() => {
       // Update coins - animate and check for collection
       for (let i = coinsInGame.length - 1; i >= 0; i--) {
         const coin = coinsInGame[i];
-        
+
         if (coin.isCollected()) {
           // Remove collected coin
           scene.remove(coin.mesh);
@@ -864,18 +907,18 @@ const App = observer(() => {
           coinsInGame.splice(i, 1);
           continue;
         }
-        
+
         // Animate coin
         coin.animate(deltaTime);
-        
+
         // Check collection against all stick people
         for (let j = 0; j < stickPeople.length; j++) {
           const stickPerson = stickPeople[j];
           if (stickPerson && !stickPerson.isFalling && !stickPerson.isDying) {
             if (coin.checkCollision(stickPerson.getPosition())) {
               coin.collect();
-              setCoins(prevCoins => prevCoins + 1);
-              
+              setCoins((prevCoins) => prevCoins + 1);
+
               // Remove coin from scene
               scene.remove(coin.mesh);
               coin.dispose();
@@ -884,7 +927,7 @@ const App = observer(() => {
             }
           }
         }
-        
+
         // Clean up coins that are too far behind
         if (coin.shouldCleanup(camera.position.z)) {
           scene.remove(coin.mesh);
@@ -905,7 +948,10 @@ const App = observer(() => {
           if (stickPerson.canShoot()) {
             const bulletPosition = stickPerson.shoot(weaponUpgrade.getStats());
             if (bulletPosition) {
-              const newBullet = new Bullet(bulletPosition, weaponUpgrade.getStats());
+              const newBullet = new Bullet(
+                bulletPosition,
+                weaponUpgrade.getStats()
+              );
               scene.add(newBullet.mesh);
               bullets.push(newBullet);
             }
@@ -936,7 +982,7 @@ const App = observer(() => {
             (mobCube.material as THREE.Material).dispose();
             cubes.splice(index, 1);
             cubeVelocities.splice(index, 1);
-            
+
             // Remove stick person from scene and array immediately
             scene.remove(stickPerson.group);
             stickPerson.dispose();
@@ -1071,7 +1117,7 @@ const App = observer(() => {
         const stickPerson = dyingStickPeople[i];
         if (stickPerson) {
           stickPerson.animate(deltaTime);
-          
+
           // Remove if death animation is complete
           if (stickPerson.isDeathAnimationComplete()) {
             scene.remove(stickPerson.group);
@@ -1176,14 +1222,14 @@ const App = observer(() => {
         (segment.material as THREE.Material).dispose();
       });
       roadSegments.length = 0;
-      
+
       roadLineSegments.forEach((segment) => {
         scene.remove(segment);
         segment.geometry.dispose();
         (segment.material as THREE.Material).dispose();
       });
       roadLineSegments.length = 0;
-      
+
       // Regenerate road segments
       nextRoadSegmentZ = 0;
       for (let i = 0; i < 20; i++) {
@@ -1192,7 +1238,7 @@ const App = observer(() => {
       }
 
       // Reset star positions
-      const starsPositionAttribute = starsGeometry.getAttribute('position');
+      const starsPositionAttribute = starsGeometry.getAttribute("position");
       for (let i = 0; i < starPositions.length; i++) {
         const x = CONFIG.RNG.starPosition();
         const y = CONFIG.RNG.starPosition();
@@ -1214,18 +1260,18 @@ const App = observer(() => {
 
       // Clear triggered pairs
       triggeredPairs.clear();
-      
+
       // Reset weapon upgrade message and menu (but NOT upgrades - they persist)
       setWeaponUpgradeMessage("");
       setShowUpgradeMenu(false);
-      
+
       // Reset score, level, and game time
       setScore(0);
       setCurrentLevel(1);
       // NOTE: Coins are NOT reset - they persist between games
       gameTimeSeconds = 0;
       lastFrameTime = performance.now();
-      
+
       // Send reset score to server
       if (updateScore) {
         updateScore(0);
@@ -1306,10 +1352,16 @@ const App = observer(() => {
           </div>
         )}
         <div className="text-xl font-bold">Challengers: {mobCount}</div>
-        <div className="text-lg font-semibold text-yellow-400">Score: {score}</div>
-        <div className="text-md font-medium text-blue-400">Level: {currentLevel}</div>
-        <div className="text-md font-medium text-yellow-600">Coins: {coins}</div>
-        
+        <div className="text-lg font-semibold text-yellow-400">
+          Score: {score}
+        </div>
+        <div className="text-md font-medium text-blue-400">
+          Level: {currentLevel}
+        </div>
+        <div className="text-md font-medium text-yellow-600">
+          Coins: {coins}
+        </div>
+
         {/* Weapon Stats */}
         <div className="mt-2 text-sm">
           <div className="text-orange-400 font-medium">Weapon Stats:</div>
@@ -1319,15 +1371,18 @@ const App = observer(() => {
             <div>Rate: {(60 / weaponStats.rateOfFire).toFixed(1)}/s</div>
           </div>
         </div>
-        
+
         {/* Movement Speed Display */}
         <div className="mt-2 text-sm">
           <div className="text-green-400 font-medium">Movement:</div>
           <div className="text-xs text-gray-300">
-            Speed: {Math.min(
-              1 + ((currentLevel - 1) * CONFIG.MAGNETIC_POINT_SPEED_INCREASE_RATE),
+            Speed:{" "}
+            {Math.min(
+              1 +
+                (currentLevel - 1) * CONFIG.MAGNETIC_POINT_SPEED_INCREASE_RATE,
               CONFIG.MAGNETIC_POINT_MAX_MULTIPLIER
-            ).toFixed(1)}x
+            ).toFixed(1)}
+            x
           </div>
         </div>
       </div>
@@ -1413,8 +1468,17 @@ const App = observer(() => {
             <div className="text-sm font-semibold mb-1">Live Leaderboard</div>
             <div className="space-y-1">
               {liveLeaderboard.slice(0, 5).map((entry, index) => (
-                <div key={entry.username} className="flex justify-between text-xs">
-                  <span className={`${entry.username === username ? 'text-yellow-400 font-bold' : 'text-gray-300'}`}>
+                <div
+                  key={entry.username}
+                  className="flex justify-between text-xs"
+                >
+                  <span
+                    className={`${
+                      entry.username === username
+                        ? "text-yellow-400 font-bold"
+                        : "text-gray-300"
+                    }`}
+                  >
                     {index + 1}. {entry.username}
                   </span>
                   <span className="text-white">{entry.score}</span>
@@ -1430,8 +1494,17 @@ const App = observer(() => {
             <div className="text-sm font-semibold mb-1">All-Time Best</div>
             <div className="space-y-1">
               {allTimeLeaderboard.slice(0, 5).map((entry, index) => (
-                <div key={entry.username} className="flex justify-between text-xs">
-                  <span className={`${entry.username === username ? 'text-yellow-400 font-bold' : 'text-gray-300'}`}>
+                <div
+                  key={entry.username}
+                  className="flex justify-between text-xs"
+                >
+                  <span
+                    className={`${
+                      entry.username === username
+                        ? "text-yellow-400 font-bold"
+                        : "text-gray-300"
+                    }`}
+                  >
                     {index + 1}. {entry.username}
                   </span>
                   <span className="text-white">{entry.score}</span>
@@ -1457,7 +1530,8 @@ const App = observer(() => {
                     <strong>Final Score: {score}</strong>
                   </p>
                   <p className="text-gray-700 mb-4">
-                    Claude Code is done working. To play for longer, give it a better prompt!
+                    Claude Code is done working. To play for longer, give it a
+                    better prompt!
                   </p>
                 </>
               ) : (
@@ -1477,7 +1551,7 @@ const App = observer(() => {
                 >
                   Play Again
                 </button>
-                {window.location.hostname === 'localhost' && (
+                {window.location.hostname === "localhost" && (
                   <button
                     onClick={() => setForceStarted(true)}
                     className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded transition-colors"
@@ -1531,17 +1605,23 @@ const App = observer(() => {
             </h2>
             <div className="text-gray-700 space-y-3">
               <p className="text-sm">
-                Run these commands in your terminal to modify the game with AI assistance:
+                This game only works while claude code is running. Run the
+                following commands to get started:
               </p>
               <div className="bg-gray-100 p-2 rounded font-mono text-xs">
-                <div><code>npx waiting-game@latest setup</code></div>
-                <div><code>npx waiting-game@latest start</code></div>
+                <div>
+                  <code>npx waiting-game@latest setup</code>
+                </div>
+                <div>
+                  <code>npx waiting-game@latest start</code>
+                </div>
               </div>
               <p className="text-xs text-gray-500">
-                The game pauses when Claude is working. Check the status in the top-right corner.
+                The game pauses when Claude is done working. Check the status in
+                the top-right corner.
               </p>
             </div>
-            
+
             <button
               onClick={handleClaudeInstructionsDismiss}
               className="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition-colors"
@@ -1562,7 +1642,7 @@ const App = observer(() => {
             <p className="text-lg text-gray-600 mb-6">
               Final Score: {score} | Coins: {coins}
             </p>
-            
+
             <div className="flex gap-4 justify-center">
               <button
                 onClick={() => setShowUpgradeMenu(!showUpgradeMenu)}
@@ -1580,61 +1660,92 @@ const App = observer(() => {
                 Restart Game
               </button>
             </div>
-            
+
             {showUpgradeMenu && (
               <div className="mt-6 text-left">
-                <h3 className="text-xl font-bold text-gray-800 mb-4">Weapon Upgrades</h3>
+                <h3 className="text-xl font-bold text-gray-800 mb-4">
+                  Weapon Upgrades
+                </h3>
                 <div className="space-y-3">
-                  {weaponUpgradeRef.current?.getUpgradeInfo().map((upgrade, index) => {
-                    const upgradeTypes: ('damage' | 'bulletVelocity' | 'rateOfFire')[] = ['damage', 'bulletVelocity', 'rateOfFire'];
-                    const upgradeType = upgradeTypes[index];
-                    const canPurchase = weaponUpgradeRef.current?.canPurchaseUpgrade(upgradeType, coins) || false;
-                    
-                    return (
-                      <div key={upgrade.name} className="border rounded p-3 bg-gray-50">
-                        <div className="flex justify-between items-start mb-2">
-                          <div>
-                            <h4 className="font-semibold text-gray-800">{upgrade.name}</h4>
-                            <p className="text-sm text-gray-600">{upgrade.description}</p>
-                            <p className="text-xs text-gray-500">
-                              Level {upgrade.currentLevel}/{upgrade.maxLevel}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm font-bold text-yellow-600">
-                              {upgrade.cost} coins
-                            </p>
-                            <button
-                              onClick={() => {
-                                if (weaponUpgradeRef.current) {
-                                  const result = weaponUpgradeRef.current.purchaseUpgrade(upgradeType, coins);
-                                  if (result.success) {
-                                    setCoins(result.newCoinCount);
-                                    setWeaponStats(weaponUpgradeRef.current.getStats());
+                  {weaponUpgradeRef.current
+                    ?.getUpgradeInfo()
+                    .map((upgrade, index) => {
+                      const upgradeTypes: (
+                        | "damage"
+                        | "bulletVelocity"
+                        | "rateOfFire"
+                      )[] = ["damage", "bulletVelocity", "rateOfFire"];
+                      const upgradeType = upgradeTypes[index];
+                      const canPurchase =
+                        weaponUpgradeRef.current?.canPurchaseUpgrade(
+                          upgradeType,
+                          coins
+                        ) || false;
+
+                      return (
+                        <div
+                          key={upgrade.name}
+                          className="border rounded p-3 bg-gray-50"
+                        >
+                          <div className="flex justify-between items-start mb-2">
+                            <div>
+                              <h4 className="font-semibold text-gray-800">
+                                {upgrade.name}
+                              </h4>
+                              <p className="text-sm text-gray-600">
+                                {upgrade.description}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                Level {upgrade.currentLevel}/{upgrade.maxLevel}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-bold text-yellow-600">
+                                {upgrade.cost} coins
+                              </p>
+                              <button
+                                onClick={() => {
+                                  if (weaponUpgradeRef.current) {
+                                    const result =
+                                      weaponUpgradeRef.current.purchaseUpgrade(
+                                        upgradeType,
+                                        coins
+                                      );
+                                    if (result.success) {
+                                      setCoins(result.newCoinCount);
+                                      setWeaponStats(
+                                        weaponUpgradeRef.current.getStats()
+                                      );
+                                    }
                                   }
-                                }
-                              }}
-                              disabled={!canPurchase}
-                              className={`mt-1 px-3 py-1 rounded text-sm font-semibold ${
-                                canPurchase
-                                  ? 'bg-green-500 hover:bg-green-700 text-white'
-                                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                              }`}
-                            >
-                              {upgrade.currentLevel >= upgrade.maxLevel ? 'MAX' : 'Buy'}
-                            </button>
+                                }}
+                                disabled={!canPurchase}
+                                className={`mt-1 px-3 py-1 rounded text-sm font-semibold ${
+                                  canPurchase
+                                    ? "bg-green-500 hover:bg-green-700 text-white"
+                                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                }`}
+                              >
+                                {upgrade.currentLevel >= upgrade.maxLevel
+                                  ? "MAX"
+                                  : "Buy"}
+                              </button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  }) || []}
+                      );
+                    }) || []}
                 </div>
-                
+
                 {/* Reset All Upgrades Button */}
                 <div className="mt-4 pt-3 border-t">
                   <button
                     onClick={() => {
-                      if (confirm('Are you sure you want to reset all weapon upgrades? This cannot be undone.')) {
+                      if (
+                        confirm(
+                          "Are you sure you want to reset all weapon upgrades? This cannot be undone."
+                        )
+                      ) {
                         if (weaponUpgradeRef.current) {
                           weaponUpgradeRef.current.reset();
                           weaponUpgradeRef.current.saveToLocalStorage();
@@ -1670,8 +1781,16 @@ const App = observer(() => {
       <div className="absolute bottom-4 right-4 bg-black/60 text-white px-4 py-3 rounded-lg text-sm max-w-xs">
         <div className="font-bold mb-2">Setup Commands:</div>
         <div className="space-y-1 font-mono text-xs">
-          <div><code className="bg-gray-700 px-1 rounded">npx waiting-game@latest setup</code></div>
-          <div><code className="bg-gray-700 px-1 rounded">npx waiting-game@latest start</code></div>
+          <div>
+            <code className="bg-gray-700 px-1 rounded">
+              npx waiting-game@latest setup
+            </code>
+          </div>
+          <div>
+            <code className="bg-gray-700 px-1 rounded">
+              npx waiting-game@latest start
+            </code>
+          </div>
         </div>
       </div>
     </div>
