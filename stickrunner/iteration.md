@@ -71,3 +71,11 @@ they're too low now and the bullets aren't hitting the zombies
 can you not make the jumping timed, I want it tied to the spacebar.
 
 now let's add obstacles we have to jump over
+
+the obstacles are bit too tough and too many, can you add some constraints so that they're not too close to eachother
+
+let's add a force start option that allows me to start the game when claude has started working but I'm waiting for a tool call.
+
+let's add obstacles approximately 1 for every 2 sets of gates. Let's keep the obstacles centered in the two halves of the road
+
+the obstacles should remove stick people who touch them

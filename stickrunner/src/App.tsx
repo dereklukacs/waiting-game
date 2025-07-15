@@ -5,12 +5,15 @@ import { CONFIG } from "./config";
 import { StickPerson } from "./StickPerson";
 import { Zombie } from "./Zombie";
 import { Bullet } from "./Bullet";
+import { Obstacle } from "./Obstacle";
 import { useClaudeStatus } from "./hooks/useClaudeStatus";
 
 const App = observer(() => {
   const mountRef = useRef<HTMLDivElement>(null);
   const [mobCount, setMobCount] = useState(1);
   const [gameOver, setGameOver] = useState(false);
+  const [forceStarted, setForceStarted] = useState(false);
+  const forceStartedRef = useRef(forceStarted);
   
   // Get server port from URL params (default to 3001)
   const urlParams = new URLSearchParams(window.location.search);
@@ -21,7 +24,16 @@ const App = observer(() => {
   // Update ref whenever claudeStatus changes
   useEffect(() => {
     claudeStatusRef.current = claudeStatus;
+    // Reset force started when Claude becomes active
+    if (claudeStatus?.state === 'working' || claudeStatus?.state === 'tool-executing') {
+      setForceStarted(false);
+    }
   }, [claudeStatus]);
+
+  // Update forceStartedRef whenever forceStarted changes
+  useEffect(() => {
+    forceStartedRef.current = forceStarted;
+  }, [forceStarted]);
 
   useEffect(() => {
     if (!mountRef.current) return;
@@ -151,6 +163,10 @@ const App = observer(() => {
     
     // Bullet system
     const bullets: Bullet[] = [];
+    
+    // Obstacle system - tied to gate generation
+    const obstacles: Obstacle[] = [];
+    let obstacleCounter = 0; // Counter to track when to spawn obstacles (every 2 gate pairs)
     
     // Gate pair tracking
     const triggeredPairs = new Set<string>();
@@ -293,7 +309,8 @@ const App = observer(() => {
       if (!gameRunning) return; // Stop animation if game over
       
       // Check if game should be paused based on Claude status (use ref for current value)
-      gamePaused = claudeStatusRef.current?.state === 'idle' || claudeStatusRef.current?.state === 'waiting-permission';
+      // Allow force start to override pause for idle/waiting-permission states
+      gamePaused = !forceStartedRef.current && (claudeStatusRef.current?.state === 'idle' || claudeStatusRef.current?.state === 'waiting-permission');
       
       if (gamePaused) {
         // If paused, keep checking for unpause
@@ -319,6 +336,22 @@ const App = observer(() => {
       if (camera.position.z < nextGateZ + 30) {
         createGatePair(nextGateZ);
         nextGateZ -= gateSpacing; // Move to next gate position
+        
+        // Spawn obstacle every 2 gate pairs, centered in road halves
+        obstacleCounter++;
+        if (obstacleCounter >= 2) {
+          obstacleCounter = 0;
+          
+          // Position obstacle between the current and next gate
+          const obstacleZ = nextGateZ + gateSpacing / 2;
+          
+          // Choose either left half (-1.5) or right half (1.5) of road randomly
+          const roadHalfCenter = Math.random() < 0.5 ? -1.5 : 1.5;
+          
+          const newObstacle = new Obstacle(roadHalfCenter, obstacleZ);
+          scene.add(newObstacle.mesh);
+          obstacles.push(newObstacle);
+        }
       }
       
       // Spawn zombies randomly ahead of the camera
@@ -332,6 +365,7 @@ const App = observer(() => {
         scene.add(newZombie.group);
         zombies.push(newZombie);
       }
+      
       
       // Check gate collisions with individual cubes
       for (let i = gates.length - 1; i >= 0; i--) {
@@ -506,6 +540,53 @@ const App = observer(() => {
           scene.remove(zombie.group);
           zombie.dispose();
           zombies.splice(i, 1);
+        }
+      }
+      
+      // Update obstacles and check collisions
+      for (let i = obstacles.length - 1; i >= 0; i--) {
+        const obstacle = obstacles[i];
+        
+        // Check collisions with stick people
+        for (let j = stickPeople.length - 1; j >= 0; j--) {
+          const stickPerson = stickPeople[j];
+          
+          if (obstacle.checkCollision(stickPerson.getPosition())) {
+            // Obstacle hit stick person - remove the stick person
+            currentMobCount--;
+            
+            // Remove stick person
+            scene.remove(stickPerson.group);
+            stickPerson.dispose();
+            stickPeople.splice(j, 1);
+            
+            // Remove corresponding cube
+            const correspondingCube = cubes[j];
+            if (correspondingCube) {
+              scene.remove(correspondingCube);
+              correspondingCube.geometry.dispose();
+              (correspondingCube.material as THREE.Material).dispose();
+              cubes.splice(j, 1);
+              cubeVelocities.splice(j, 1);
+            }
+            
+            setMobCount(currentMobCount);
+            
+            // Check for game over
+            if (cubes.length === 0) {
+              gameRunning = false;
+              setGameOver(true);
+            }
+            
+            break; // Obstacle can only hit one person at a time
+          }
+        }
+        
+        // Remove obstacles that are too far behind camera
+        if (obstacle.mesh.position.z > camera.position.z + CONFIG.OBSTACLE_CLEANUP_DISTANCE) {
+          scene.remove(obstacle.mesh);
+          obstacle.dispose();
+          obstacles.splice(i, 1);
         }
       }
       
@@ -708,6 +789,14 @@ const App = observer(() => {
       });
       bullets.length = 0;
       
+      // Clear all obstacles
+      obstacles.forEach(obstacle => {
+        scene.remove(obstacle.mesh);
+        obstacle.dispose();
+      });
+      obstacles.length = 0;
+      obstacleCounter = 0;
+      
       // Clear all cubes and stick people
       while (cubes.length > 0) {
         const removedCube = cubes.pop();
@@ -821,20 +910,26 @@ const App = observer(() => {
       </div>
 
       {/* Game Paused Overlay */}
-      {(claudeStatus?.state === 'idle' || claudeStatus?.state === 'waiting-permission') && (
-        <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center pointer-events-none">
+      {!forceStarted && (claudeStatus?.state === 'idle' || claudeStatus?.state === 'waiting-permission') && (
+        <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
           <div className="bg-white rounded-lg p-6 text-center shadow-lg">
             {claudeStatus?.state === 'idle' ? (
               <>
                 <h2 className="text-2xl font-bold text-green-600 mb-2">Game Paused</h2>
-                <p className="text-gray-700">Claude is idle - ask Claude something to resume!</p>
+                <p className="text-gray-700 mb-4">Claude is idle - ask Claude something to resume!</p>
               </>
             ) : (
               <>
                 <h2 className="text-2xl font-bold text-blue-600 mb-2">Game Paused</h2>
-                <p className="text-gray-700">Claude needs permission - check your terminal!</p>
+                <p className="text-gray-700 mb-4">Claude needs permission - check your terminal!</p>
               </>
             )}
+            <button
+              onClick={() => setForceStarted(true)}
+              className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded transition-colors"
+            >
+              Force Start Game
+            </button>
           </div>
         </div>
       )}

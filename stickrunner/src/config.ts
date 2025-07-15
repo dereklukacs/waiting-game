@@ -35,6 +35,16 @@ export const CONFIG = {
   BULLET_RANGE: 50, // Maximum distance bullets travel
   BULLET_DAMAGE_DISTANCE: 0.5, // How close bullets need to be to hit zombies (increased)
 
+  // Obstacle Properties
+  OBSTACLE_WIDTH: 1.0, // Width of obstacles (smaller for easier navigation)
+  OBSTACLE_HEIGHT: 0.3, // Height of obstacles (lower for easier jumping)
+  OBSTACLE_DEPTH: 0.4, // Depth of obstacles
+  OBSTACLE_SPAWN_RATE: 0.002, // Very low spawn rate (0.2% per frame)
+  OBSTACLE_SPAWN_DISTANCE: -50, // How far ahead obstacles spawn
+  OBSTACLE_CLEANUP_DISTANCE: 20, // Remove obstacles this far behind camera
+  OBSTACLE_COLLISION_HEIGHT: 0.4, // Maximum height where collision occurs
+  OBSTACLE_MIN_SPACING: 15, // Large minimum distance between obstacles
+
   // Physics
   ATTRACTION_STRENGTH: 0.022, // Slightly reduced attraction
   ATTRACTION_MIN_DISTANCE: 0.3, // Slightly larger dead zone
@@ -105,6 +115,7 @@ export const CONFIG = {
     BACKGROUND: 0x001155, // Lighter dark blue background
     ZOMBIE: 0xcc0000, // Brighter dark red
     BULLET: 0xff8800, // Orange bullets (more visible)
+    OBSTACLE: 0x8B4513, // Brown obstacles
   },
 
   // Mouse Controls
