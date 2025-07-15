@@ -42,6 +42,7 @@ const App = observer(() => {
   const [showUpgradeMenu, setShowUpgradeMenu] = useState<boolean>(false);
   const weaponUpgradeRef = useRef<WeaponUpgrade | null>(null);
   const isFirstRender = useRef<boolean>(true);
+  const [showClaudeInstructions, setShowClaudeInstructions] = useState<boolean>(false);
 
   // Get server port from URL params (default to 3001)
   const urlParams = new URLSearchParams(window.location.search);
@@ -126,6 +127,12 @@ const App = observer(() => {
     }
     setDeviceId(savedDeviceId);
     
+    // Check if Claude integration instructions have been shown
+    const claudeInstructionsShown = localStorage.getItem("stickrunner-claude-instructions-shown");
+    if (!claudeInstructionsShown) {
+      setShowClaudeInstructions(true);
+    }
+    
     // Coins are now loaded directly in useState initializer
   }, []);
 
@@ -162,6 +169,12 @@ const App = observer(() => {
   const cancelEditingUsername = () => {
     setUsernameInput("");
     setEditingUsername(false);
+  };
+
+  // Handle Claude instructions dismissal
+  const handleClaudeInstructionsDismiss = () => {
+    setShowClaudeInstructions(false);
+    localStorage.setItem("stickrunner-claude-instructions-shown", "true");
   };
 
   useEffect(() => {
@@ -1509,6 +1522,36 @@ const App = observer(() => {
         </div>
       )}
 
+      {/* Claude Integration Instructions Modal */}
+      {showClaudeInstructions && (
+        <div className="absolute inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 text-center max-w-md mx-4">
+            <h2 className="text-2xl font-bold text-blue-600 mb-4">
+              🤖 Claude Code Integration
+            </h2>
+            <div className="text-gray-700 space-y-3">
+              <p className="text-sm">
+                Run these commands in your terminal to modify the game with AI assistance:
+              </p>
+              <div className="bg-gray-100 p-2 rounded font-mono text-xs">
+                <div><code>npx waiting-game@latest setup</code></div>
+                <div><code>npx waiting-game@latest start</code></div>
+              </div>
+              <p className="text-xs text-gray-500">
+                The game pauses when Claude is working. Check the status in the top-right corner.
+              </p>
+            </div>
+            
+            <button
+              onClick={handleClaudeInstructionsDismiss}
+              className="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition-colors"
+            >
+              Got it!
+            </button>
+          </div>
+        </div>
+      )}
+
       {gameOver && (
         <div className="absolute inset-0 bg-black/75 flex items-center justify-center">
           <div className="bg-white rounded-lg p-8 text-center max-w-md w-full mx-4">
@@ -1620,6 +1663,15 @@ const App = observer(() => {
           <div>• Avoid red gates (remove challengers)</div>
           <div>• Shoot zombies automatically</div>
           <div>• Don't let all challengers get eliminated!</div>
+        </div>
+      </div>
+
+      {/* NPX Commands */}
+      <div className="absolute bottom-4 right-4 bg-black/60 text-white px-4 py-3 rounded-lg text-sm max-w-xs">
+        <div className="font-bold mb-2">Setup Commands:</div>
+        <div className="space-y-1 font-mono text-xs">
+          <div><code className="bg-gray-700 px-1 rounded">npx waiting-game@latest setup</code></div>
+          <div><code className="bg-gray-700 px-1 rounded">npx waiting-game@latest start</code></div>
         </div>
       </div>
     </div>

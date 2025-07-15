@@ -165,4 +165,10 @@ Coins and weapon upgrades should persist between games in local storage
 
 I think the left to right rate limit should increase slightly as the difficulty increases
 
+On first load, show instructions for how to run the claude code integration `npx waiting-game@latest setup` and `npx waiting-game@latest start`
+
+add the npx commands to the bottom right of the screen
+
 ========= UNFINISHED TASKS BELOW THIS LINE =======
+
+let's make sure the local server handles pre-compact commands

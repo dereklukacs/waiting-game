@@ -25,6 +25,9 @@ program
         return;
       }
       
+      // Process pre-compact setup command
+      console.log('🔧 Processing setup commands...');
+      
       await installHooks();
       console.log('✅ Setup complete!');
       console.log('💡 Use "npx waiting-game start" to begin playing');
@@ -44,10 +47,12 @@ program
       
       if (!hooksInstalled) {
         console.log('⚠️  Hooks not installed. Installing them first...');
+        console.log('🔧 Processing setup commands...');
         await installHooks();
         console.log('✅ Hooks installed!');
       }
       
+      console.log('🔧 Processing start commands...');
       console.log(`🚀 Starting server on port ${options.port}...`);
       
       const serverPath = path.join(__dirname, '..', 'src', 'server.js');

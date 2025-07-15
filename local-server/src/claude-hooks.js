@@ -9,6 +9,10 @@ const HOOK_CONFIG = {
         "matcher": ".*",
         "hooks": [
           {
+            "type": "command", 
+            "command": "curl -s -X POST http://localhost:3001/commands/pre-compact -H 'Content-Type: application/json' -d '{\"command\":\"validate\"}' || true"
+          },
+          {
             "type": "command",
             "command": "curl -s -X POST http://localhost:3001/hooks/tool-start || true"
           }

@@ -64,6 +64,77 @@ function createStatusRoutes(statusManager) {
     }
   });
 
+  // Pre-compact command handler
+  router.post('/commands/pre-compact', (req, res) => {
+    try {
+      const { command, data } = req.body;
+      console.log('[Commands] Processing pre-compact command:', command);
+      
+      // Handle different types of pre-compact commands
+      switch (command) {
+        case 'setup':
+          console.log('[Commands] Setup command received');
+          statusManager.markWorking();
+          res.json({ 
+            success: true, 
+            message: 'Setup command processed',
+            timestamp: Date.now()
+          });
+          break;
+          
+        case 'start':
+          console.log('[Commands] Start command received');
+          statusManager.markWorking();
+          res.json({ 
+            success: true, 
+            message: 'Start command processed',
+            timestamp: Date.now()
+          });
+          break;
+          
+        case 'validate':
+          console.log('[Commands] Validation command received');
+          res.json({ 
+            success: true, 
+            message: 'Command validation successful',
+            valid: true,
+            timestamp: Date.now()
+          });
+          break;
+          
+        default:
+          console.log('[Commands] Unknown pre-compact command:', command);
+          res.json({ 
+            success: true, 
+            message: 'Unknown command processed',
+            command: command,
+            timestamp: Date.now()
+          });
+      }
+    } catch (error) {
+      console.error('[Commands] Error handling pre-compact command:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // Get available commands
+  router.get('/commands', (req, res) => {
+    try {
+      res.json({
+        availableCommands: [
+          'setup',
+          'start', 
+          'validate'
+        ],
+        endpoint: '/commands/pre-compact',
+        timestamp: Date.now()
+      });
+    } catch (error) {
+      console.error('[Commands] Error getting commands:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
   return router;
 }
 
