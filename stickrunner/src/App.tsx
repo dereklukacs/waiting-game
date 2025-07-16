@@ -433,6 +433,34 @@ const App = observer(() => {
       isDragging = false;
     };
 
+    // Touch event handlers
+    const handleTouchStart = (event: TouchEvent) => {
+      event.preventDefault(); // Prevent default touch behavior
+      if (event.touches.length > 0) {
+        isDragging = true;
+        lastMouseX = event.touches[0].clientX;
+      }
+    };
+
+    const handleTouchMove = (event: TouchEvent) => {
+      event.preventDefault(); // Prevent scrolling
+      if (!isDragging || event.touches.length === 0) return;
+
+      const deltaX = event.touches[0].clientX - lastMouseX;
+      const sensitivity = 0.01;
+      targetX += deltaX * sensitivity;
+
+      // Clamp to road bounds
+      targetX = Math.max(-roadBounds, Math.min(roadBounds, targetX));
+
+      lastMouseX = event.touches[0].clientX;
+    };
+
+    const handleTouchEnd = (event: TouchEvent) => {
+      event.preventDefault();
+      isDragging = false;
+    };
+
     // Keyboard event handlers
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.code === "Space") {
@@ -449,6 +477,11 @@ const App = observer(() => {
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
     window.addEventListener("keydown", handleKeyDown);
+
+    // Add touch event listeners
+    renderer.domElement.addEventListener("touchstart", handleTouchStart, { passive: false });
+    renderer.domElement.addEventListener("touchmove", handleTouchMove, { passive: false });
+    renderer.domElement.addEventListener("touchend", handleTouchEnd, { passive: false });
 
     // Animation loop
     let animationId: number;
@@ -1301,6 +1334,12 @@ const App = observer(() => {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
       window.removeEventListener("keydown", handleKeyDown);
+      
+      // Remove touch event listeners
+      renderer.domElement.removeEventListener("touchstart", handleTouchStart);
+      renderer.domElement.removeEventListener("touchmove", handleTouchMove);
+      renderer.domElement.removeEventListener("touchend", handleTouchEnd);
+      
       delete (window as any).restartGame;
       if (mountRef.current && renderer.domElement) {
         mountRef.current.removeChild(renderer.domElement);

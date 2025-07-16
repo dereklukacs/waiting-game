@@ -169,6 +169,7 @@ On first load, show instructions for how to run the claude code integration `npx
 
 add the npx commands to the bottom right of the screen
 
+let's make sure the local server handles pre-compact commands
 ========= UNFINISHED TASKS BELOW THIS LINE =======
 
-let's make sure the local server handles pre-compact commands
+can you make sure this takes mobile touch actions?
